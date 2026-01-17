@@ -2,8 +2,9 @@ import express, { type Request, type Response, type NextFunction } from "express
 import cors from "cors";
 import authRoutes from "./routes/auth.route.js";
 
-// If you already have route files, you can import them like this:
-// import apiRoutes from "./routes/index.js";
+import groupsRoutes from "./routes/groups.js";
+import hangoutsRoutes from "./routes/hangouts.js";
+import invitesRoutes from "./routes/invites.js";
 
 export const app = express();
 
@@ -19,9 +20,11 @@ app.get("/health", (_req: Request, res: Response) => {
 
 app.use("/auth", authRoutes);
 
+// ✅ Mount your API routes here (BEFORE 404)
+app.use("/api/groups", groupsRoutes); // /api/groups/:groupId
+app.use("/api", hangoutsRoutes);      // /api/groups/:groupId/hangouts + /api/hangouts/:proposalId
+app.use("/api", invitesRoutes);
 
-// If you have routes folder ready, use this instead:
-// app.use("/api", apiRoutes);
 
 // --- 404 handler ---
 app.use((_req: Request, res: Response) => {
@@ -33,4 +36,3 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error(err);
   res.status(500).json({ ok: false, error: "Internal server error" });
 });
-
