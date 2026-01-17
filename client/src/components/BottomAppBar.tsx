@@ -9,10 +9,12 @@ import {
 } from "lucide-react";
 import { Typography, Paper, Box } from "@mui/material";
 import { COLORS } from "../constants/colors";
+import { useAddModeAction } from "../contexts/AddModeActionContext";
 
 export function BottomAppBar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { submitFromAppBar, isSubmitting } = useAddModeAction();
 
   const path = location.pathname;
 
@@ -65,16 +67,16 @@ export function BottomAppBar() {
   // FAB becomes pill when in add-mode
   const fabWidth = isAddMode ? 120 : 44;
 
-  const handleFabClick = () => {
+  const handleFabClick = async () => {
     if (isAddMode) {
-      // TODO: replace this with your submit/save action
-      // e.g. dispatch(saveEvent()), then navigate("/")
-      navigate(isAddEvent ? "/" : "/groups");
+      if (isSubmitting) return;
+      await submitFromAppBar(); // ✅ triggers AddEvent submit
       return;
     }
-
     navigate(isHome ? "/add-event" : "/add-group");
   };
+
+
 
   return (
     <Box

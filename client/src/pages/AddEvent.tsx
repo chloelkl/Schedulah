@@ -1,35 +1,110 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Calendar, Briefcase, Cake, Plus } from "lucide-react";
-import {
-  Box,
-  Paper,
-  Typography,
-  TextField,
-  Stack,
-} from "@mui/material";
+import { Box, Paper, Typography, TextField, Stack, Divider } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import { COLORS } from "../constants/colors";
+import { supabase } from "../lib/supabaseClient";
+import { useToast } from "../contexts/ToastContext";
+import { useAddModeAction } from "../contexts/AddModeActionContext";
+
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 
 export function AddEvent() {
-  const [type, setType] = useState<"event" | "recurring" | "birthday" | "custom">(
-    "event"
-  );
+  const navigate = useNavigate();
+  const { showToast } = useToast();
+  const { registerSubmit, setIsSubmitting } = useAddModeAction();
 
-  // event fields (only used when type === "event")
+  const [type, setType] = useState<"event" | "recurring" | "birthday" | "custom">("event");
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
-  const [date, setDate] = useState(""); // yyyy-mm-dd
-  const [startAt, setStartAt] = useState(""); // HH:mm
-  const [endAt, setEndAt] = useState(""); // HH:mm
+  const [date, setDate] = useState("");
+  const [startAt, setStartAt] = useState("");
+  const [endAt, setEndAt] = useState("");
 
-  const headerMap: Record<typeof type, string> = {
+  const headerMap: Record<typeof type, string> = useMemo(() => ({
     event: "Event",
     recurring: "Recurring",
     birthday: "Birthday",
     custom: "Custom",
-  };
+  }), []);
 
   const iconColor = (active: boolean) => (active ? COLORS.offWhite : COLORS.grey);
+
+  const submitEvent = async () => {
+    console.log("POST ->", `${API_BASE}/api/events/add`);
+
+    if (type !== "event") return;
+
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      showToast("Title is required.", "error");
+      return;
+    }
+    if (!date) {
+      showToast("Date is required.", "error");
+      return;
+    }
+
+    // all_day = true only when BOTH empty
+    const allDay = !startAt && !endAt;
+
+    // if only one time filled, allow it (you said optional)
+    // you can enforce rules later if you want.
+
+    setIsSubmitting(true);
+    try {
+      const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+      if (sessionErr) throw sessionErr;
+
+      // TODO
+      // const accessToken = sessionData.session?.access_token;
+      // if (!accessToken) {
+      //   showToast("Please sign in again.", "error");
+      //   return;
+      // }
+
+      const payload = {
+        title: trimmedTitle,
+        description: description.trim() ? description.trim() : null,
+        location: location.trim() ? location.trim() : null,
+        date, // yyyy-mm-dd
+        start_at: startAt ? startAt : null,
+        end_at: endAt ? endAt : null,
+        all_day: allDay,
+      };
+
+      const res = await fetch(`${API_BASE}/api/events/add`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = json?.error ?? "Failed to add event.";
+        throw new Error(msg);
+      }
+
+      showToast("Event added!");
+      navigate("/");
+    } catch (e: any) {
+      showToast(e?.message ?? "Failed to add event.", "error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ✅ Register submit function so BottomAppBar pill can trigger it
+  useEffect(() => {
+    registerSubmit(type === "event" ? submitEvent : null);
+    return () => registerSubmit(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type, title, description, location, date, startAt, endAt]);
 
   return (
     <Box
@@ -69,33 +144,13 @@ export function AddEvent() {
           width={0.8}
           margin={"auto"}
         >
-          <Calendar
-            size={30}
-            color={iconColor(type === "event")}
-            onClick={() => setType("event")}
-            style={{ cursor: "pointer" }}
-          />
-          <Briefcase
-            size={30}
-            color={iconColor(type === "recurring")}
-            onClick={() => setType("recurring")}
-            style={{ cursor: "pointer" }}
-          />
-          <Cake
-            size={30}
-            color={iconColor(type === "birthday")}
-            onClick={() => setType("birthday")}
-            style={{ cursor: "pointer" }}
-          />
-          <Plus
-            size={30}
-            color={iconColor(type === "custom")}
-            onClick={() => setType("custom")}
-            style={{ cursor: "pointer" }}
-          />
+          <Calendar size={30} color={iconColor(type === "event")} onClick={() => setType("event")} style={{ cursor: "pointer" }} />
+          <Briefcase size={30} color={iconColor(type === "recurring")} onClick={() => setType("recurring")} style={{ cursor: "pointer" }} />
+          <Cake size={30} color={iconColor(type === "birthday")} onClick={() => setType("birthday")} style={{ cursor: "pointer" }} />
+          <Plus size={30} color={iconColor(type === "custom")} onClick={() => setType("custom")} style={{ cursor: "pointer" }} />
         </Box>
 
-        {/* Form body sheet */}
+        {/* Body sheet */}
         <Box
           sx={{
             backgroundColor: COLORS.offWhite,
@@ -105,16 +160,18 @@ export function AddEvent() {
             mt: "auto",
             px: 2.25,
             pt: 2.25,
-            pb: 10, // space so bottom app bar doesn't cover fields
+            pb: 10,
             color: COLORS.offBlack,
           }}
         >
           {type === "event" ? (
             <>
+              <Typography fontWeight={800} sx={{ mb: 1 }}>
+                Details
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
 
-
-              <Stack spacing={2} pt={2}>
-                {/* title (required) */}
+              <Stack spacing={2}>
                 <TextField
                   label="Title *"
                   value={title}
@@ -124,7 +181,6 @@ export function AddEvent() {
                   required
                 />
 
-                {/* description (optional) */}
                 <TextField
                   label="Description"
                   value={description}
@@ -135,16 +191,14 @@ export function AddEvent() {
                   minRows={3}
                 />
 
-                {/* location (optional) */}
                 <TextField
                   label="Location"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  placeholder="e.g. Nanyang Polytechnic"
+                  placeholder="e.g. NYP Library"
                   fullWidth
                 />
 
-                {/* date (required) */}
                 <TextField
                   label="Date *"
                   type="date"
@@ -155,7 +209,6 @@ export function AddEvent() {
                   InputLabelProps={{ shrink: true }}
                 />
 
-                {/* start/end (optional) */}
                 <Box sx={{ display: "flex", gap: 2 }}>
                   <TextField
                     label="Start at"
