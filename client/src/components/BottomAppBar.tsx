@@ -1,12 +1,6 @@
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import {
-  Calendar,
-  Users,
-  Settings,
-  Plus,
-  Check,
-} from "lucide-react";
+import { Calendar, Users, Settings, Plus, Check } from "lucide-react";
 import { Typography, Paper, Box } from "@mui/material";
 import { COLORS } from "../constants/colors";
 import { useAddModeAction } from "../contexts/AddModeActionContext";
@@ -28,8 +22,16 @@ export function BottomAppBar() {
   const isAddMode = isAddEvent || isAddGroup;
 
   const showFab = !isSettings;
-
   const pillLabel = isAddEvent ? "Add Event" : "Add Group";
+
+  // ✅ consistent sizing for mobile
+  const BAR_H = 52;          // main bar + fab height
+  const FAB_CIRCLE = 52;     // circle size
+  const FAB_PILL_W = 132;    // pill width in add-mode
+  const ICON = 20;
+
+  const leftBarWidth = isAddMode ? "35%" : "50%";
+  const fabWidth = isAddMode ? FAB_PILL_W : FAB_CIRCLE;
 
   const navItem = (
     active: boolean,
@@ -43,67 +45,63 @@ export function BottomAppBar() {
         display: "flex",
         alignItems: "center",
         gap: active ? 0.75 : 0,
-        px: active ? 1.5 : 1,
-        py: 0.5,
+        px: active ? 1.5 : 1.25,
+        py: 0.75,
         borderRadius: 999,
         cursor: "pointer",
         backgroundColor: active ? COLORS.offWhite : "transparent",
         color: active ? COLORS.offBlack : COLORS.grey,
         transition: "all 0.2s ease",
         userSelect: "none",
+        "& svg": { flexShrink: 0 },
       }}
     >
       {icon}
       {active && (
-        <Typography fontSize={12} fontWeight={600}>
+        <Typography fontSize={12} fontWeight={700} lineHeight={1}>
           {label}
         </Typography>
       )}
     </Box>
   );
 
-  // Left main bar becomes shorter when in add-mode (so the pill can expand)
-  const leftBarWidth = isAddMode ? "30%" : "50%";
-
-  // FAB becomes pill when in add-mode
-  const fabWidth = isAddMode ? 120 : 44;
-
   const handleFabClick = async () => {
     if (isAddMode) {
       if (isSubmitting) return;
-      await submitFromAppBar(); // ✅ triggers AddEvent submit
+      await submitFromAppBar();
       return;
     }
+
     if (isHome) {
       const params = new URLSearchParams(location.search);
-      const d = params.get("d"); // "YYYY-MM-DD" or null
-      navigate(d ? `/events/new?date=${encodeURIComponent(d)}` : `/events/new?date=${ymdFromLocalDate(new Date)}`);
+      const d = params.get("d");
+      const date = d ?? ymdFromLocalDate(new Date());
+      navigate(`/events/new?date=${encodeURIComponent(date)}`);
     } else {
       navigate("/add-group");
     }
   };
 
-
-
   return (
     <Box
       sx={{
         position: "fixed",
-        bottom: 16,
+        bottom: "max(12px, env(safe-area-inset-bottom))",
         left: "50%",
         transform: "translateX(-50%)",
         width: "min(360px, 100vw - 32px)",
         zIndex: 1300,
       }}
     >
-      <Box sx={{ position: "relative" }}>
+      <Box sx={{ position: "relative", height: BAR_H }}>
+        {/* Left bar */}
         <Paper
           elevation={0}
           sx={{
             backgroundColor: COLORS.accentPink,
             borderRadius: 999,
-            px: 1.5,
-            py: 1.5,
+            height: BAR_H,                 // ✅ consistent height
+            px: 1.25,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -111,19 +109,12 @@ export function BottomAppBar() {
             transition: "width 0.25s ease",
           }}
         >
-          {navItem(isHome, "Home", <Calendar size={18} />, () => navigate("/"))}
-
-          {navItem(isGroups, "Groups", <Users size={18} />, () => navigate("/groups"))}
-
-          {navItem(
-            isSettings,
-            "Settings",
-            <Settings size={18} />,
-            () => navigate("/settings")
-          )}
+          {navItem(isHome, "Home", <Calendar size={ICON} />, () => navigate("/"))}
+          {navItem(isGroups, "Groups", <Users size={ICON} />, () => navigate("/groups"))}
+          {navItem(isSettings, "Settings", <Settings size={ICON} />, () => navigate("/settings"))}
         </Paper>
 
-        {/* Floating Action Button / Pill */}
+        {/* Right action button */}
         {showFab && (
           <Box
             onClick={handleFabClick}
@@ -133,22 +124,20 @@ export function BottomAppBar() {
               top: "50%",
               transform: "translateY(-50%)",
 
-              backgroundColor: COLORS.accentPink,
-              py: 1.9,
+              backgroundColor: isAddMode ? COLORS.darkRed : COLORS.accentPink,
+              height: BAR_H,               // ✅ same as left bar
               width: fabWidth,
-              borderRadius: 999,
+              borderRadius: isAddMode ? 999 : "50%", // ✅ true circle when not add-mode
 
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              gap: isAddMode ? 1 : 0,
 
-              color: isAddMode ? COLORS.offBlack : COLORS.grey,
+              color: isAddMode ? COLORS.offWhite : COLORS.grey,
               cursor: "pointer",
               boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
               transition: "all 0.25s ease",
               userSelect: "none",
-              px: isAddMode ? 0.75 : 0.5,
               overflow: "hidden",
               whiteSpace: "nowrap",
             }}
@@ -156,28 +145,25 @@ export function BottomAppBar() {
             {isAddMode ? (
               <Box
                 sx={{
-                  height: 30,
-                  px: 1.5,
                   borderRadius: 999,
-                  backgroundColor: COLORS.offWhite,
+                  px: 1.5,
+                  py: 0.85,                 // ✅ scales nicely within BAR_H
                   display: "flex",
                   alignItems: "center",
                   gap: 1,
                 }}
               >
                 <Check size={18} />
-                <Typography fontSize={12} fontWeight={700}>
+                <Typography fontSize={12} fontWeight={800} lineHeight={1}>
                   {pillLabel}
                 </Typography>
               </Box>
             ) : (
-              <Plus size={20} />
+              <Plus size={22} />
             )}
           </Box>
-
-        )
-        }
-      </Box >
-    </Box >
+        )}
+      </Box>
+    </Box>
   );
 }

@@ -11,7 +11,7 @@ export function AddEventTypePicker({
   type: AddEventType;
   setType: (t: AddEventType) => void;
 }) {
-  const iconColor = (active: boolean) => (active ? COLORS.offWhite : COLORS.grey);
+  const iconColor = (active: boolean) => (active ? '100%' : '50%');
 
   return (
     <Box
@@ -24,27 +24,31 @@ export function AddEventTypePicker({
     >
       <Calendar
         size={30}
-        color={iconColor(type === "event")}
+        opacity={iconColor(type === "event")}
         onClick={() => setType("event")}
         style={{ cursor: "pointer" }}
+        color={COLORS.offWhite}
       />
       <Briefcase
         size={30}
-        color={iconColor(type === "recurring")}
+        opacity={iconColor(type === "recurring")}
         onClick={() => setType("recurring")}
         style={{ cursor: "pointer" }}
+        color={COLORS.offWhite}
       />
       <Cake
         size={30}
-        color={iconColor(type === "birthday")}
+        opacity={iconColor(type === "birthday")}
         onClick={() => setType("birthday")}
         style={{ cursor: "pointer" }}
+        color={COLORS.offWhite}
       />
       <Plus
         size={30}
-        color={iconColor(type === "custom")}
+        opacity={iconColor(type === "custom")}
         onClick={() => setType("custom")}
         style={{ cursor: "pointer" }}
+        color={COLORS.offWhite}
       />
     </Box>
   );
