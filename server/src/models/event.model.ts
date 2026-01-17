@@ -6,6 +6,7 @@ export type Event = {
   description: string | null;
   location: string | null;
 
+  date: string;
   start_at: string;
   end_at: string;
   all_day: boolean;

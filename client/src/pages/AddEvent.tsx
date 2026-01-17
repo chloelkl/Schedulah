@@ -1,12 +1,26 @@
 import { useState } from "react";
 import { Calendar, Briefcase, Cake, Plus } from "lucide-react";
-import { Box, Paper, Typography } from "@mui/material";
+import {
+  Box,
+  Paper,
+  Typography,
+  TextField,
+  Stack,
+} from "@mui/material";
 import { COLORS } from "../constants/colors";
 
-
 export function AddEvent() {
-  const [type, setType] = useState<"event" | "recurring" | "birthday" | "custom">("event");
+  const [type, setType] = useState<"event" | "recurring" | "birthday" | "custom">(
+    "event"
+  );
 
+  // event fields (only used when type === "event")
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [location, setLocation] = useState("");
+  const [date, setDate] = useState(""); // yyyy-mm-dd
+  const [startAt, setStartAt] = useState(""); // HH:mm
+  const [endAt, setEndAt] = useState(""); // HH:mm
 
   const headerMap: Record<typeof type, string> = {
     event: "Event",
@@ -15,9 +29,7 @@ export function AddEvent() {
     custom: "Custom",
   };
 
-
   const iconColor = (active: boolean) => (active ? COLORS.offWhite : COLORS.grey);
-
 
   return (
     <Box
@@ -28,7 +40,6 @@ export function AddEvent() {
         display: "flex",
         justifyContent: "center",
         alignItems: "flex-start",
-
       }}
     >
       <Paper
@@ -49,7 +60,6 @@ export function AddEvent() {
           </Typography>
         </Box>
 
-
         {/* Category Icons */}
         <Box
           display="flex"
@@ -57,7 +67,7 @@ export function AddEvent() {
           alignItems="center"
           pb={4}
           width={0.8}
-          margin={'auto'}
+          margin={"auto"}
         >
           <Calendar
             size={30}
@@ -85,17 +95,95 @@ export function AddEvent() {
           />
         </Box>
 
-
-        {/* Placeholder for form body */}
+        {/* Form body sheet */}
         <Box
           sx={{
             backgroundColor: COLORS.offWhite,
             borderTopLeftRadius: 40,
             borderTopRightRadius: 40,
             flexGrow: 1,
-
+            mt: "auto",
+            px: 2.25,
+            pt: 2.25,
+            pb: 10, // space so bottom app bar doesn't cover fields
+            color: COLORS.offBlack,
           }}
-        />
+        >
+          {type === "event" ? (
+            <>
+
+
+              <Stack spacing={2} pt={2}>
+                {/* title (required) */}
+                <TextField
+                  label="Title *"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Study session"
+                  fullWidth
+                  required
+                />
+
+                {/* description (optional) */}
+                <TextField
+                  label="Description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Optional notes"
+                  fullWidth
+                  multiline
+                  minRows={3}
+                />
+
+                {/* location (optional) */}
+                <TextField
+                  label="Location"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="e.g. Nanyang Polytechnic"
+                  fullWidth
+                />
+
+                {/* date (required) */}
+                <TextField
+                  label="Date *"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  fullWidth
+                  required
+                  InputLabelProps={{ shrink: true }}
+                />
+
+                {/* start/end (optional) */}
+                <Box sx={{ display: "flex", gap: 2 }}>
+                  <TextField
+                    label="Start at"
+                    type="time"
+                    value={startAt}
+                    onChange={(e) => setStartAt(e.target.value)}
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                  />
+                  <TextField
+                    label="End at"
+                    type="time"
+                    value={endAt}
+                    onChange={(e) => setEndAt(e.target.value)}
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Box>
+              </Stack>
+            </>
+          ) : (
+            <Box sx={{ pt: 2 }}>
+              <Typography fontWeight={700} sx={{ color: COLORS.offBlack }}>
+                Coming soon ✨
+              </Typography>
+            </Box>
+          )}
+        </Box>
       </Paper>
     </Box>
   );
