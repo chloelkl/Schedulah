@@ -73,6 +73,8 @@ export function AddEvent() {
         start_at: startAt ? startAt : null,
         end_at: endAt ? endAt : null,
         all_day: allDay,
+
+        category_name: type
       };
 
       const res = await fetch(`${API_BASE}/api/events/add`, {
