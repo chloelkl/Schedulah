@@ -23,6 +23,12 @@ export type DayEvent = {
   category?: { name: string; color: string | null } | null;
 };
 
+const GRID_ROWS = 6;      // your grid is always padded to full weeks
+const CELL = 36;
+const GAP = 8;
+const GRID_H = GRID_ROWS * CELL + (GRID_ROWS - 1) * GAP; // 6*36 + 5*8 = 256
+
+
 // =========================
 // Animation variants
 // =========================
@@ -219,63 +225,75 @@ export default function Home() {
         </Box>
 
         {/* Animated Calendar Grid */}
-        <AnimatePresence mode="wait" custom={direction}>
-          <motion.div
-            key={currentMonth.toISOString()}
-            custom={direction}
-            variants={variants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }}
-          >
-            {days.map((cell, idx) => {
-              const { date, inCurrentMonth } = cell;
+        <Box sx={{ position: "relative", height: GRID_H, overflow: "hidden" }}>
+          <AnimatePresence mode="wait" custom={direction} initial={false}>
+            <motion.div
+              key={`${currentMonth.getFullYear()}-${currentMonth.getMonth()}`} // ✅ stable key
+              custom={direction}
+              variants={variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              style={{
+                position: "absolute",        // ✅ take out of document flow
+                inset: 0,                    // top:0 left:0 right:0 bottom:0
+                display: "grid",
+                gridTemplateColumns: "repeat(7, 1fr)",
+                gap: 8,
+              }}
+            >
+              {days.map((cell, idx) => {
+                const { date, inCurrentMonth } = cell;
+                const isToday = isSameDay(date, today);
+                const isSelected = isSameDay(date, selectedDate);
 
-              const isToday = isSameDay(date, today);
-              const isSelected = isSameDay(date, selectedDate);
+                return (
+                  <Box
+                    key={idx}
+                    onClick={() => {
+                      setSelectedDate(date);
 
-              return (
-                <Box
-                  key={idx}
-                  onClick={() => {
-                    setSelectedDate(date);
+                      const yyyyMmDd =
+                        `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
-                    const yyyyMmDd =
-                      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+                      const params = new URLSearchParams(location.search);
+                      params.set("d", yyyyMmDd);
+                      navigate({ pathname: "/", search: params.toString() }, { replace: true });
 
-                    const params = new URLSearchParams(location.search);
-                    params.set("d", yyyyMmDd);
-                    navigate({ pathname: "/", search: params.toString() }, { replace: true });
+                      if (!inCurrentMonth) {
+                        setDirection(date > currentMonth ? 1 : -1);
+                        setCurrentMonth(startOfMonth(date));
+                      }
+                    }}
+                    sx={{
+                      height: 36,
+                      width: 36,
+                      mx: "auto",
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      backgroundColor: isSelected ? COLORS.accentPink : "transparent",
+                      border: isToday ? `1.5px solid ${COLORS.offWhite}` : "none",
+                      opacity: inCurrentMonth ? 1 : 0.4,
+                    }}
+                  >
+                    <Typography
+                      fontSize={14}
+                      fontWeight={isSelected ? 600 : 400}
+                      color={COLORS.offWhite}
+                    >
+                      {date.getDate()}
+                    </Typography>
+                  </Box>
+                );
+              })}
+            </motion.div>
+          </AnimatePresence>
+        </Box>
 
-                    if (!inCurrentMonth) {
-                      setDirection(date > currentMonth ? 1 : -1);
-                      setCurrentMonth(startOfMonth(date));
-                    }
-                  }}
-                  sx={{
-                    height: 36,
-                    width: 36,
-                    mx: "auto",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    backgroundColor: isSelected ? COLORS.accentPink : "transparent",
-                    border: isToday ? `1.5px solid ${COLORS.offWhite}` : "none",
-                    opacity: inCurrentMonth ? 1 : 0.4,
-                  }}
-                >
-                  <Typography fontSize={14} fontWeight={isSelected ? 600 : 400} color={COLORS.offWhite}>
-                    {date.getDate()}
-                  </Typography>
-                </Box>
-              );
-            })}
-          </motion.div>
-        </AnimatePresence>
 
 
       </Paper>
