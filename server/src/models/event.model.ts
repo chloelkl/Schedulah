@@ -1,0 +1,21 @@
+export type Event = {
+  event_id: string;
+  user_id: string;
+
+  title: string;
+  description: string | null;
+  location: string | null;
+
+  start_at: string;
+  end_at: string;
+  all_day: boolean;
+
+  visibility: "private" | "free_busy_only";
+  busy_status: "busy" | "free" | "maybe";
+  source: "manual" | "group_event";
+
+  final_event_id: string | null;
+
+  created_at: string;
+  updated_at: string;
+};
