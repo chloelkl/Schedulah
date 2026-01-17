@@ -1,30 +1,25 @@
 import './App.css';
-import { Container, AppBar, Toolbar, Typography } from '@mui/material';
-import { BrowserRouter as Router, Routes, Route, Link }
-  from 'react-router-dom';
+import { Container } from '@mui/material';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Home from './pages/Home';
 import Schedule from './pages/Schedule';
+import { BottomAppBar } from './components/BottomNavBar';
+
 function App() {
   return (
     <Router>
-      <AppBar position="static" className='AppBar'>
-        <Container>
-          <Toolbar disableGutters={true}>
-            <Link to="/">
-              <Typography variant="h6" component="div">
-                Schedulah
-              </Typography>
-            </Link>
-            <Link to="/schedule" ><Typography>Schedule</Typography></Link>
-          </Toolbar>
-        </Container>
-      </AppBar>
-      <Container>
+      {/* Main content */}
+      <Container sx={{ padding: 0, pb: 10 }}>
         <Routes>
-          <Route path={"/"} />
-          <Route path={"/schedule"} element={<Schedule />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/schedule" element={<Schedule />} />
         </Routes>
       </Container>
+
+      {/* Bottom App Bar */}
+      <BottomAppBar />
     </Router>
   );
 }
+
 export default App;
