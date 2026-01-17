@@ -73,7 +73,13 @@ export function BottomAppBar() {
       await submitFromAppBar(); // ✅ triggers AddEvent submit
       return;
     }
-    navigate(isHome ? "/events/new" : "/add-group");
+    if (isHome) {
+      const params = new URLSearchParams(location.search);
+      const d = params.get("d"); // "YYYY-MM-DD" or null
+      navigate(d ? `/events/new?date=${encodeURIComponent(d)}` : "/add-event");
+    } else {
+      navigate("/add-group");
+    }
   };
 
 
@@ -96,7 +102,7 @@ export function BottomAppBar() {
             backgroundColor: COLORS.accentPink,
             borderRadius: 999,
             px: 1.5,
-            py: 1,
+            py: 1.5,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -127,7 +133,7 @@ export function BottomAppBar() {
               transform: "translateY(-50%)",
 
               backgroundColor: COLORS.accentPink,
-              height: 44,
+              py: 1.9,
               width: fabWidth,
               borderRadius: 999,
 
@@ -141,7 +147,7 @@ export function BottomAppBar() {
               boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
               transition: "all 0.25s ease",
               userSelect: "none",
-              px: isAddMode ? 0.75 : 0,
+              px: isAddMode ? 0.75 : 0.5,
               overflow: "hidden",
               whiteSpace: "nowrap",
             }}

@@ -6,6 +6,7 @@ import { COLORS } from "../constants/colors";
 import { supabase } from "../lib/supabaseClient";
 import { useToast } from "../contexts/ToastContext";
 import { useAddModeAction } from "../contexts/AddModeActionContext";
+import { useLocation as useRouterLocation } from "react-router-dom";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 
@@ -23,6 +24,9 @@ export function AddEvent() {
   const [startAt, setStartAt] = useState("");
   const [endAt, setEndAt] = useState("");
 
+  const routerLocation = useRouterLocation();
+
+
   const headerMap: Record<typeof type, string> = useMemo(() => ({
     event: "Event",
     recurring: "Recurring",
@@ -31,6 +35,14 @@ export function AddEvent() {
   }), []);
 
   const iconColor = (active: boolean) => (active ? COLORS.offWhite : COLORS.grey);
+
+  useEffect(() => {
+    const params = new URLSearchParams(routerLocation.search);
+    const prefill = params.get("date");
+    if (prefill && /^\d{4}-\d{2}-\d{2}$/.test(prefill)) {
+      setDate(prefill);
+    }
+  }, [routerLocation.search]);
 
   const submitEvent = async () => {
     console.log("POST ->", `${API_BASE}/api/events/add`);
@@ -168,12 +180,8 @@ export function AddEvent() {
         >
           {type === "event" ? (
             <>
-              <Typography fontWeight={800} sx={{ mb: 1 }}>
-                Details
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
 
-              <Stack spacing={2}>
+              <Stack spacing={2} pt={2}>
                 <TextField
                   label="Title *"
                   value={title}

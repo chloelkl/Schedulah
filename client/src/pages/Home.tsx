@@ -3,6 +3,7 @@ import { Box, Typography, Paper } from "@mui/material";
 import { motion, AnimatePresence } from "framer-motion";
 import { COLORS } from "../constants/colors";
 import { startOfMonth, endOfMonth, isSameDay } from "../helpers/date-helpers";
+import { useNavigate, useLocation } from "react-router-dom";
 
 // =========================
 // Animation variants
@@ -31,6 +32,10 @@ export default function Home() {
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(today));
   const [selectedDate, setSelectedDate] = useState<Date>(today);
   const [direction, setDirection] = useState(0);
+
+  const navigate = useNavigate();
+  const location = useLocation();
+
 
   const touchStartX = useRef<number | null>(null);
 
@@ -160,6 +165,13 @@ export default function Home() {
                   key={idx}
                   onClick={() => {
                     setSelectedDate(date);
+
+                    const yyyyMmDd =
+                      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+                    const params = new URLSearchParams(location.search);
+                    params.set("d", yyyyMmDd);
+                    navigate({ pathname: "/", search: params.toString() }, { replace: true });
                     if (!inCurrentMonth) {
                       setDirection(date > currentMonth ? 1 : -1);
                       setCurrentMonth(startOfMonth(date));
