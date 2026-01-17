@@ -10,6 +10,7 @@ import {
 import { Typography, Paper, Box } from "@mui/material";
 import { COLORS } from "../constants/colors";
 import { useAddModeAction } from "../contexts/AddModeActionContext";
+import { ymdFromLocalDate } from "../helpers/date-helpers";
 
 export function BottomAppBar() {
   const location = useLocation();
@@ -76,7 +77,7 @@ export function BottomAppBar() {
     if (isHome) {
       const params = new URLSearchParams(location.search);
       const d = params.get("d"); // "YYYY-MM-DD" or null
-      navigate(d ? `/events/new?date=${encodeURIComponent(d)}` : "/add-event");
+      navigate(d ? `/events/new?date=${encodeURIComponent(d)}` : `/events/new?date=${ymdFromLocalDate(new Date)}`);
     } else {
       navigate("/add-group");
     }

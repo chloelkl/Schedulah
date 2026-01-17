@@ -1,9 +1,27 @@
-import { useState, useMemo, useRef } from "react";
-import { Box, Typography, Paper } from "@mui/material";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { Box, Typography, Paper, Divider } from "@mui/material";
 import { motion, AnimatePresence } from "framer-motion";
 import { COLORS } from "../constants/colors";
-import { startOfMonth, endOfMonth, isSameDay } from "../helpers/date-helpers";
+import { startOfMonth, endOfMonth, isSameDay, prettyDate, prettyTimeRange } from "../helpers/date-helpers";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Briefcase, Cake, Calendar } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
+
+// =========================
+// Types
+// =========================
+export type DayEvent = {
+  event_id: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  date: string; // YYYY-MM-DD
+  start_at: string | null; // HH:mm
+  end_at: string | null; // HH:mm
+  all_day: boolean;
+  category?: { name: string; color: string | null } | null;
+};
 
 // =========================
 // Animation variants
@@ -23,6 +41,20 @@ const variants = {
   }),
 };
 
+const getCategoryKey = (e: any) =>
+  String(e?.category?.name ?? "").trim().toLowerCase(); // "event" | "recurring" | "birthday"
+
+const CategoryIcon = ({ e }: { e: any }) => {
+  const key = getCategoryKey(e);
+  console.log(e)
+  const color = e.category?.color ?? COLORS.accentPink;
+
+  if (key === "recurring") return <Briefcase size={18} color={color} />;
+  if (key === "birthday") return <Cake size={18} color={color} />;
+  // default = event
+  return <Calendar size={18} color={color} />;
+};
+
 // =========================
 // Component
 // =========================
@@ -36,6 +68,9 @@ export default function Home() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // ✅ new: events state (minimal change)
+  const [events, setEvents] = useState<DayEvent[]>([]);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(false);
 
   const touchStartX = useRef<number | null>(null);
 
@@ -82,9 +117,7 @@ export default function Home() {
 
   const changeMonth = (dir: "prev" | "next") => {
     setDirection(dir === "next" ? 1 : -1);
-    setCurrentMonth(prev =>
-      new Date(prev.getFullYear(), prev.getMonth() + (dir === "next" ? 1 : -1), 1)
-    );
+    setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + (dir === "next" ? 1 : -1), 1));
   };
 
   // =========================
@@ -106,6 +139,51 @@ export default function Home() {
     else changeMonth("prev");
   };
 
+  // ✅ new: read selected date from query param "d" on load/back/refresh
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const d = params.get("d");
+    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      const [y, m, dd] = d.split("-").map(Number);
+      const next = new Date(y, (m ?? 1) - 1, dd ?? 1);
+      setSelectedDate(next);
+
+      // keep month in sync if user lands on a different day
+      const monthStart = startOfMonth(next);
+      if (monthStart.getFullYear() !== currentMonth.getFullYear() || monthStart.getMonth() !== currentMonth.getMonth()) {
+        setCurrentMonth(monthStart);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
+
+  // ✅ new: fetch events for selected date (minimal behaviour change)
+  useEffect(() => {
+    const yyyyMmDd =
+      `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
+
+    const controller = new AbortController();
+
+    const run = async () => {
+      setIsLoadingEvents(true);
+      try {
+        const res = await fetch(`${API_BASE}/api/events/retrieve-by-date?date=${encodeURIComponent(yyyyMmDd)}`, {
+          signal: controller.signal,
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json?.error ?? "Failed to fetch events");
+        setEvents(json?.events ?? []);
+      } catch (e: any) {
+        if (e?.name !== "AbortError") setEvents([]);
+      } finally {
+        setIsLoadingEvents(false);
+      }
+    };
+
+    run();
+    return () => controller.abort();
+  }, [selectedDate]);
+
   return (
     <Box
       sx={{
@@ -115,7 +193,7 @@ export default function Home() {
         display: "flex",
         justifyContent: "center",
         alignItems: "flex-start",
-        p: 2,
+        pt: 5,
       }}
     >
       <Paper
@@ -126,16 +204,14 @@ export default function Home() {
       >
         {/* Header */}
         <Box display="flex" alignItems="center" justifyContent="center" mb={2}>
-
           <Typography variant="h6" fontWeight={600} sx={{ color: COLORS.offWhite }}>
             {currentMonth.toLocaleString("default", { month: "short", year: "numeric" })}
           </Typography>
-
         </Box>
 
         {/* Weekdays */}
         <Box display="grid" gridTemplateColumns="repeat(7, 1fr)" textAlign="center" mb={1}>
-          {["S", "M", "T", "W", "T", "F", "S"].map(d => (
+          {["S", "M", "T", "W", "T", "F", "S"].map((d) => (
             <Typography key={d} fontSize={12} color={COLORS.offWhite}>
               {d}
             </Typography>
@@ -172,6 +248,7 @@ export default function Home() {
                     const params = new URLSearchParams(location.search);
                     params.set("d", yyyyMmDd);
                     navigate({ pathname: "/", search: params.toString() }, { replace: true });
+
                     if (!inCurrentMonth) {
                       setDirection(date > currentMonth ? 1 : -1);
                       setCurrentMonth(startOfMonth(date));
@@ -199,7 +276,75 @@ export default function Home() {
             })}
           </motion.div>
         </AnimatePresence>
+
+
       </Paper>
+
+      {/* ✅ new: event list (kept inside same Paper; no layout overhaul) */}
+      <Box
+        sx={{
+          mt: '100%',
+          backgroundColor: COLORS.offWhite,
+          color: COLORS.offBlack,
+          borderTopLeftRadius: 40,
+          borderTopRightRadius: 40,
+          position: 'fixed',
+          width: '100%',
+          height: '100%'
+        }}
+      >
+        <Typography fontWeight={600} sx={{ m: 3 }} fontSize={18}>
+          {prettyDate(selectedDate)}
+        </Typography>
+        <Divider sx={{ mb: 1.5 }} />
+
+        {isLoadingEvents ? (
+          <Typography fontSize={13} sx={{ color: COLORS.grey, m: 3 }}>
+            Loading…
+          </Typography>
+        ) : events.length === 0 ? (
+          <Typography fontSize={13} sx={{ color: COLORS.grey, m: 3 }}>
+            No events for this day.
+          </Typography>
+        ) : (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.1, m: 2 }}>
+            {events.map((e) => (
+              <Box
+                key={e.event_id}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  // justifyContent: "space-between",
+                  gap: 1.25,
+                  px: 1.25,
+                  py: 1,
+                  borderRadius: 3,
+                }}
+              >
+                <Box sx={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
+                  <CategoryIcon e={e} />
+                </Box>
+                <Box sx={{ minWidth: 0, px: 2 }}>
+                  <Typography fontWeight={800} fontSize={13} noWrap>
+                    {e.title}
+                  </Typography>
+                  <Typography fontSize={12} sx={{ color: COLORS.grey }}>
+                    {prettyTimeRange(e)}
+                    {e.location ? ` • ${e.location}` : ""}
+                  </Typography>
+                  {e.description ? (
+                    <Typography fontSize={12} sx={{ color: COLORS.grey }} noWrap>
+                      {e.description}
+                    </Typography>
+                  ) : null}
+                </Box>
+
+
+              </Box>
+            ))}
+          </Box>
+        )}
+      </Box>
     </Box>
   );
 }

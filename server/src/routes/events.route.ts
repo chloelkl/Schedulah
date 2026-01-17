@@ -223,4 +223,65 @@ router.post("/add-recurring", async (req, res) => {
   }
 });
 
+router.get("/retrieve-by-date", async (req, res) => {
+  try {
+    const user_id = process.env.HOST_USER_ID as string;
+    const date = String(req.query.date ?? "").trim(); // YYYY-MM-DD
+
+    if (!user_id) return res.status(500).json({ error: "HOST_USER_ID is not set" });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ error: "date must be YYYY-MM-DD" });
+    }
+
+    // 1) events on that date
+    const { data: events, error: evErr } = await supabaseAdmin
+      .from("event")
+      .select("event_id,title,description,location,date,start_at,end_at,all_day,created_at")
+      .eq("user_id", user_id)
+      .eq("date", date)
+      .order("start_at", { ascending: true, nullsFirst: true })
+      .order("created_at", { ascending: true });
+
+    if (evErr) return res.status(500).json({ error: evErr.message });
+
+    const eventIds = (events ?? []).map((e) => e.event_id);
+    if (eventIds.length === 0) return res.status(200).json({ events: [] });
+
+    // 2) maps -> category ids
+    const { data: maps, error: mapErr } = await supabaseAdmin
+      .from("event_category_map")
+      .select("event_id,category_id")
+      .in("event_id", eventIds);
+
+    if (mapErr) return res.status(500).json({ error: mapErr.message });
+
+    const catIds = Array.from(new Set((maps ?? []).map((m) => m.category_id)));
+    const { data: cats, error: catErr } = await supabaseAdmin
+      .from("event_category")
+      .select("category_id,name,color")
+      .in("category_id", catIds);
+
+    if (catErr) return res.status(500).json({ error: catErr.message });
+
+    const catById = new Map((cats ?? []).map((c) => [c.category_id, c]));
+    const catIdByEventId = new Map((maps ?? []).map((m) => [m.event_id, m.category_id]));
+
+    const enriched = (events ?? []).map((e) => {
+      const category_id = catIdByEventId.get(e.event_id) ?? null;
+      const cat = category_id ? catById.get(category_id) : null;
+      return {
+        ...e,
+        category: cat
+          ? { category_id: cat.category_id, name: cat.name, color: cat.color }
+          : null,
+      };
+    });
+
+    return res.status(200).json({ events: enriched });
+  } catch (e: any) {
+    return res.status(500).json({ error: e?.message ?? "Server error" });
+  }
+});
+
+
 export default router;

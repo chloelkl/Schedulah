@@ -1,3 +1,5 @@
+import type { DayEvent } from "../pages/Home";
+
 export const startOfMonth = (date: Date) =>
   new Date(date.getFullYear(), date.getMonth(), 1);
 
@@ -43,3 +45,34 @@ export const DAYSOFWEEK = [
   { key: "FR", label: "Fri" },
   { key: "SA", label: "Sat" },
 ];
+
+export const prettyDate = (d: Date) => {
+  return d.toLocaleDateString("en-SG", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+const to12Hour = (hhmm: string) => {
+  // expects "HH:mm"
+  const [hhStr, mmStr] = hhmm.split(":");
+  const hh = Number(hhStr);
+  const mm = Number(mmStr);
+
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return hhmm;
+
+  const ampm = hh >= 12 ? "pm" : "am";
+  const h12 = hh % 12 === 0 ? 12 : hh % 12;
+
+  // if you want "10am" when mm==00, change this line to omit minutes
+  return `${h12}:${String(mm).padStart(2, "0")}${ampm}`;
+};
+
+export const prettyTimeRange = (e: DayEvent) => {
+  if (e.all_day || (!e.start_at && !e.end_at)) return "All day";
+
+  const s = e.start_at ? to12Hour(e.start_at) : "";
+  const t = e.end_at ? to12Hour(e.end_at) : "";
+
+  if (s && t) return `${s} - ${t}`;
+  if (s) return `From ${s}`;
+  if (t) return `Until ${t}`;
+  return "All day";
+};
