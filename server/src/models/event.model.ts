@@ -6,8 +6,9 @@ export type Event = {
   description: string | null;
   location: string | null;
 
-  start_at: string;
-  end_at: string;
+  date: string;
+  start_at: string | null;
+  end_at: string | null;
   all_day: boolean;
 
   visibility: "private" | "free_busy_only";

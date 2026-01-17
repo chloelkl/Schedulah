@@ -1,6 +1,7 @@
 import express, { type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import authRoutes from "./routes/auth.route.js";
+import eventsRoutes from "./routes/events.route.js";
 
 import groupsRoutes from "./routes/groups.js";
 import hangoutsRoutes from "./routes/hangouts.js";
@@ -24,6 +25,8 @@ app.use("/auth", authRoutes);
 app.use("/api/groups", groupsRoutes); // /api/groups/:groupId
 app.use("/api", hangoutsRoutes);      // /api/groups/:groupId/hangouts + /api/hangouts/:proposalId
 app.use("/api", invitesRoutes);
+
+app.use("/api/events", eventsRoutes);
 
 
 // --- 404 handler ---
