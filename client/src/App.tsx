@@ -2,7 +2,7 @@ import './App.css';
 import { Container } from '@mui/material';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
-import { BottomAppBar } from './components/BottomNavBar';
+import { BottomAppBar } from './components/BottomAppBar';
 import Groups from "./pages/Groups";
 import GroupDetail from "./pages/GroupDetail";
 import NewHangout from "./pages/NewHangout";
