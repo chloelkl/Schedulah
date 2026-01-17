@@ -22,7 +22,7 @@ export function BottomAppBar() {
   const isGroups = path === "/groups";
   const isSettings = path === "/settings";
 
-  const isAddEvent = path === "/add-event";
+  const isAddEvent = path === "/events/new";
   const isAddGroup = path === "/add-group";
   const isAddMode = isAddEvent || isAddGroup;
 
@@ -73,7 +73,7 @@ export function BottomAppBar() {
       await submitFromAppBar(); // ✅ triggers AddEvent submit
       return;
     }
-    navigate(isHome ? "/add-event" : "/add-group");
+    navigate(isHome ? "/events/new" : "/add-group");
   };
 
 

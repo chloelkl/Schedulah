@@ -17,7 +17,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           {/* Event */}
-          <Route path="/add-event" element={<AddEvent />} />
+          <Route path="/events/new" element={<AddEvent />} />
 
           {/* Group */}
           <Route path="/groups" element={<Groups />} />
