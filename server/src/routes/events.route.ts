@@ -18,7 +18,14 @@ function dayEndExclusiveSG(dateYmd: string) {
   d.setDate(d.getDate() + 1);
   return d;
 }
-
+function addDaysYmd(dateYmd: string, days: number) {
+  const d = new Date(`${dateYmd}T00:00:00+08:00`);
+  d.setDate(d.getDate() + days);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const da = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${da}`;
+}
 // Build DTSTART from anchor event.date + start_at (HH:mm) in SG
 function buildDtStartSG(anchorYmd: string, startAt?: string | null) {
   const time =
@@ -458,29 +465,76 @@ router.get("/retrieve-month-dots", async (req, res) => {
     const start = String(req.query.start ?? "").trim(); // YYYY-MM-DD
     const end = String(req.query.end ?? "").trim();     // YYYY-MM-DD
 
+    if (!user_id) return res.status(500).json({ error: "HOST_USER_ID is not set" });
     if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
       return res.status(400).json({ error: "start/end must be YYYY-MM-DD" });
     }
 
+    // ----------------------------
+    // 1) Base events in [start, end]
+    // ----------------------------
     const { data: events, error: evErr } = await supabaseAdmin
       .from("event")
-      .select("event_id,date")
+      .select("event_id,date,start_at") // start_at used for dtstart if recurring anchor
       .eq("user_id", user_id)
       .gte("date", start)
       .lte("date", end);
 
     if (evErr) return res.status(500).json({ error: evErr.message });
-    const eventIds = (events ?? []).map((e) => e.event_id);
-    if (!eventIds.length) return res.status(200).json({ dots: {} });
 
+    // ----------------------------
+    // 2) Fetch recurrence rows (for this user's events)
+    //    We need recurring anchors even if anchor date is outside the window,
+    //    because occurrences may fall inside [start,end].
+    // ----------------------------
+    const { data: recRows, error: recErr } = await supabaseAdmin
+      .from("event_recurrence")
+      .select("event_id, rrule, until_at, count");
+
+    if (recErr) return res.status(500).json({ error: recErr.message });
+
+    const recEventIds = Array.from(new Set((recRows ?? []).map((r: any) => r.event_id).filter(Boolean)));
+
+    // ----------------------------
+    // 3) Fetch anchor events for those recurrence rows (filtered by user)
+    // ----------------------------
+    let recEvents: any[] = [];
+    if (recEventIds.length) {
+      const { data: recEv, error: recEvErr } = await supabaseAdmin
+        .from("event")
+        .select("event_id,user_id,date,start_at")
+        .eq("user_id", user_id)
+        .in("event_id", recEventIds);
+
+      if (recEvErr) return res.status(500).json({ error: recEvErr.message });
+      recEvents = recEv ?? [];
+    }
+
+    const recEventById = new Map(recEvents.map((e: any) => [e.event_id, e]));
+
+    // ----------------------------
+    // 4) Collect all event_ids that can appear as dots:
+    //    - base events in window
+    //    - recurring anchor events (to get their category)
+    // ----------------------------
+    const baseEventIds = (events ?? []).map((e) => e.event_id);
+    const allIdsForCategoryLookup = Array.from(
+      new Set([...baseEventIds, ...recEvents.map((e: any) => e.event_id)])
+    );
+
+    if (!allIdsForCategoryLookup.length) return res.status(200).json({ dots: {} });
+
+    // ----------------------------
+    // 5) Category colors for all relevant events
+    // ----------------------------
     const { data: maps, error: mapErr } = await supabaseAdmin
       .from("event_category_map")
       .select("event_id,category_id")
-      .in("event_id", eventIds);
+      .in("event_id", allIdsForCategoryLookup);
 
     if (mapErr) return res.status(500).json({ error: mapErr.message });
 
-    const catIds = Array.from(new Set((maps ?? []).map((m) => m.category_id)));
+    const catIds = Array.from(new Set((maps ?? []).map((m: any) => m.category_id)));
     const { data: cats, error: catErr } = await supabaseAdmin
       .from("event_category")
       .select("category_id,color")
@@ -488,22 +542,73 @@ router.get("/retrieve-month-dots", async (req, res) => {
 
     if (catErr) return res.status(500).json({ error: catErr.message });
 
-    const colorByCat = new Map((cats ?? []).map((c) => [c.category_id, c.color]));
-    const catByEvent = new Map((maps ?? []).map((m) => [m.event_id, m.category_id]));
+    const colorByCat = new Map((cats ?? []).map((c: any) => [c.category_id, c.color]));
+    const catByEvent = new Map((maps ?? []).map((m: any) => [m.event_id, m.category_id]));
 
+    // ----------------------------
+    // 6) Build dots map:
+    //    - add base events directly by their date
+    //    - expand recurring events and add dots for each occurrence day in range
+    // ----------------------------
     const dots: Record<string, string[]> = {};
 
+    function addDot(ymd: string, event_id: string) {
+      const catId = catByEvent.get(event_id);
+      if (!catId) return;
+      const color = colorByCat.get(catId);
+      if (!color) return;
+
+      if (!dots[ymd]) dots[ymd] = [];
+      if (!dots[ymd].includes(color)) dots[ymd].push(color);
+    }
+
+    // base events
     for (const ev of events ?? []) {
-      const catId = catByEvent.get(ev.event_id);
-      if (!catId) continue;
+      addDot(String(ev.date), String(ev.event_id));
+    }
 
-      const color = colorByCat.get(catId) ?? null;
-      if (!color) continue;
+    // recurring occurrences across the month range
+    const from = dayStartSG(start);
+    const to = dayEndExclusiveSG(addDaysYmd(end, 1)); // exclusive upper bound (end + 1 day)
 
-      const key = ev.date as string;
+    for (const r of recRows ?? []) {
+      const anchor = recEventById.get((r as any).event_id);
+      if (!anchor) continue; // not this user
 
-      if (!dots[key]) dots[key] = [];
-      if (!dots[key].includes(color)) dots[key].push(color); // ✅ 1 per colour
+      const ruleStr = normalizeRRule((r as any).rrule);
+      if (!ruleStr) continue;
+
+      const dtstart = buildDtStartSG(String(anchor.date), anchor.start_at);
+      const parsed = RRule.parseString(ruleStr);
+
+      const opts: any = { ...parsed, dtstart };
+
+      const until = parseUntilSGInclusive((r as any).until_at);
+      if (!opts.until && until) opts.until = until;
+
+      if (!opts.count && typeof (r as any).count === "number") {
+        opts.count = (r as any).count;
+      }
+
+      let rule: any;
+      try {
+        rule = new RRule(opts);
+      } catch {
+        continue;
+      }
+
+      const occs: Date[] = rule.between(from, to, true);
+      if (!occs.length) continue;
+
+      // Add dot for each occurrence date in SG
+      for (const d of occs) {
+        const sg = new Date(d.getTime()); // d is JS Date; treat as point-in-time
+        // Convert to SG YMD using +08 offset string trick:
+        const iso = new Date(sg.getTime() + 8 * 60 * 60 * 1000).toISOString(); // shift to SG for ymd
+        const ymd = iso.slice(0, 10);
+        if (ymd < start || ymd > end) continue;
+        addDot(ymd, String(anchor.event_id));
+      }
     }
 
     return res.status(200).json({ dots });
