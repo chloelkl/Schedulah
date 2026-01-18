@@ -1,3 +1,5 @@
+import { supabase } from "../lib/supabaseClient";
+
 // client/src/utils/api.ts
 const API =
   import.meta.env.VITE_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
@@ -39,16 +41,28 @@ async function parse<T>(res: Response): Promise<T> {
 }
 
 export async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${API}${path}`);
+  const res = await fetch(`${API}${path}`, {
+    method: "GET",
+    headers: {
+      ...(await authHeaders()),
+    },
+  });
+  const json = (await res.json().catch(() => ({}))) as any;
+  if (!res.ok) throw new Error(json?.error || `Request failed (${res.status})`);
   return await parse<T>(res);
 }
 
 export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(await authHeaders()),
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+  const json = (await res.json().catch(() => ({}))) as any;
+  if (!res.ok) throw new Error(json?.error || `Request failed (${res.status})`);
   return await parse<T>(res);
 }
 
@@ -79,4 +93,11 @@ export async function apiGetFinal(proposalId: string, userId: string) {
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json?.error || "Final not ready");
   return json;
+}
+
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }

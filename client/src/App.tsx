@@ -8,6 +8,7 @@ import GroupDetail from "./pages/GroupDetail";
 import NewHangout from "./pages/NewHangout";
 import NewGroup from "./pages/NewGroup";
 import { AddEvent } from './pages/AddEvent';
+import Login from './pages/Login';
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="/groups/new" element={<NewGroup />} />
 
 
+          <Route path="/login" element={<Login />} />
 
         </Routes>
       </Container>
