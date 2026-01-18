@@ -1,5 +1,5 @@
 import React from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, matchPath } from "react-router-dom";
 import { Calendar, Users, Settings, Plus, Check } from "lucide-react";
 import { Typography, Paper, Box } from "@mui/material";
 import { COLORS } from "../constants/colors";
@@ -18,11 +18,15 @@ export function BottomAppBar() {
   const isSettings = path === "/settings";
 
   const isAddEvent = path === "/events/new";
-  const isAddGroup = path === "/add-group";
-  const isAddMode = isAddEvent || isAddGroup;
+  const isAddGroup = path === "/groups/new";
+  const isAddHangout = matchPath("/groups/:groupId/new-hangout", path) != null;
+
+  const isAddMode = isAddEvent || isAddGroup || isAddHangout;
+
+  const pillLabel = isAddEvent ? "Add Event" : isAddGroup ? "Add Group" : "Add hangout";
+
 
   const showFab = !isSettings;
-  const pillLabel = isAddEvent ? "Add Event" : "Add Group";
 
   // ✅ consistent sizing for mobile
   const BAR_H = 52;          // main bar + fab height
@@ -72,14 +76,21 @@ export function BottomAppBar() {
       return;
     }
 
-    if (isHome) {
+    // ✅ If you're on /groups/:groupId, route + to initiate hangout
+    const m = matchPath("/groups/:groupId", path);
+    const groupId = m?.params?.groupId;
+
+    if (groupId) {
+      navigate(`/groups/${groupId}/new-hangout`);
+      return;
+    } else if (isHome) {
       const params = new URLSearchParams(location.search);
       const d = params.get("d");
       const date = d ?? ymdFromLocalDate(new Date());
-      navigate(`/events/new?date=${encodeURIComponent(date)}`);
-    } else {
-      navigate("/add-group");
-    }
+  
+    // ✅ default behavior (home -> add-event, else -> new group)
+    navigate(`/events/new?date=${encodeURIComponent(date)}`);
+    } 
   };
 
   return (

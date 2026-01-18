@@ -1,6 +1,6 @@
 // client/src/pages/Groups.tsx
 import { useEffect, useMemo, useState } from "react";
-import { Box, Paper, Typography, TextField, Button } from "@mui/material";
+import { Box, Paper, Typography, TextField } from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { COLORS } from "../constants/colors";
 import InviteJoinOverlay from "../components/InviteJoinOverlay";
@@ -59,7 +59,7 @@ export default function Groups() {
 
   useEffect(() => {
     loadGroups();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   const filtered = useMemo(() => {
@@ -111,30 +111,6 @@ export default function Groups() {
           "& fieldset": { borderColor: "rgba(0,0,0,0.10)" },
         }}
       />
-
-      <Box sx={{ mt: 1.25, display: "flex", justifyContent: "flex-end" }}>
-        <Button
-          variant="contained"
-          onClick={() => nav("/groups/new")}
-          sx={{
-            borderRadius: 999,
-            textTransform: "none",
-            fontWeight: 900,
-            px: 2.25,
-            py: 1,
-            backgroundColor: COLORS.accentPink,
-            color: "white",
-            boxShadow: "none",
-            "&:hover": {
-              backgroundColor: COLORS.accentPink,
-              boxShadow: "none",
-              opacity: 0.92,
-            },
-          }}
-        >
-          + Create group
-        </Button>
-      </Box>
 
       <Box sx={{ mt: 2, display: "grid", gap: 1.25 }}>
         {loading && (
