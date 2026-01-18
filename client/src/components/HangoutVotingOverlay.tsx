@@ -425,44 +425,101 @@ export default function HangoutVotingOverlay({ open, proposalId, onClose }: Prop
       onClose={onClose}
       fullWidth
       maxWidth="sm"
+      slotProps={{
+        backdrop: {
+          sx: {
+            backgroundColor: "rgba(17, 0, 0, 0.55)",
+            backdropFilter: "blur(6px)",
+          },
+        },
+      }}
       PaperProps={{
         sx: {
-          borderRadius: 4,
+          borderRadius: 5,
           backgroundColor: COLORS.offWhite,
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
           maxHeight: "calc(100vh - 24px)",
+          border: "1px solid rgba(0,0,0,0.06)",
+          boxShadow: "0 24px 70px rgba(0,0,0,0.35)",
         },
       }}
     >
-      {/* Header */}
-      <Box sx={{ p: 1.5, display: "flex", alignItems: "center", gap: 1 }}>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={{ fontWeight: 900, color: COLORS.offBlack, fontSize: 14 }}>
-            {title}
-          </Typography>
-          <Typography sx={{ fontSize: 12, color: COLORS.grey, fontWeight: 800 }}>
-            {stepTitle}
-            {safeCounts() ? ` • ${safeCounts()}` : ""}
-          </Typography>
+      {/* Header (Schedulah red strip) */}
+      <Box
+        sx={{
+          position: "relative",
+          px: 2,
+          pt: 1.75,
+          pb: 1.25,
+          backgroundColor: COLORS.darkRed,
+          color: COLORS.offWhite,
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography
+              sx={{
+                fontWeight: 950,
+                fontSize: 15,
+                letterSpacing: 0.2,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {title}
+            </Typography>
+
+            <Typography sx={{ fontSize: 12, color: "rgba(255,255,255,0.75)", fontWeight: 800 }}>
+              {stepTitle}
+              {safeCounts() ? ` • ${safeCounts()}` : ""}
+            </Typography>
+          </Box>
+
+          <IconButton
+            onClick={onClose}
+            size="small"
+            aria-label="Close"
+            sx={{
+              color: "rgba(255,255,255,0.9)",
+              backgroundColor: "rgba(255,255,255,0.12)",
+              border: "1px solid rgba(255,255,255,0.18)",
+              "&:hover": { backgroundColor: "rgba(255,255,255,0.18)" },
+            }}
+          >
+            <CloseRoundedIcon fontSize="small" />
+          </IconButton>
         </Box>
 
-        <IconButton onClick={onClose} size="small" aria-label="Close">
-          <CloseRoundedIcon fontSize="small" />
-        </IconButton>
+        {/* Progress bar (thin, pink-ish) */}
+        <Box sx={{ mt: 1.25 }}>
+          <LinearProgress
+            variant="determinate"
+            value={progressPct}
+            sx={{
+              height: 6,
+              borderRadius: 999,
+              backgroundColor: "rgba(255,255,255,0.18)",
+              "& .MuiLinearProgress-bar": {
+                backgroundColor: COLORS.accentPink,
+                borderRadius: 999,
+              },
+            }}
+          />
+        </Box>
       </Box>
-
-      <LinearProgress variant="determinate" value={progressPct} />
 
       {/* Body */}
       <Box
         sx={{
-          p: 1.75,
+          p: 2,
           overflowY: "auto",
           WebkitOverflowScrolling: "touch",
           flex: 1,
-          pb: 10,
+          pb: 11,
+          backgroundColor: COLORS.offWhite,
         }}
       >
         {loading && (
@@ -477,12 +534,12 @@ export default function HangoutVotingOverlay({ open, proposalId, onClose }: Prop
             sx={{
               p: 1.25,
               mb: 1.25,
-              borderRadius: 3,
-              backgroundColor: "rgba(255,255,255,0.65)",
+              borderRadius: 4,
+              backgroundColor: "rgba(255,255,255,0.75)",
               border: "1px dashed rgba(0,0,0,0.18)",
             }}
           >
-            <Typography sx={{ fontWeight: 900, color: COLORS.offBlack, fontSize: 12 }}>
+            <Typography sx={{ fontWeight: 950, color: COLORS.offBlack, fontSize: 12 }}>
               Something went wrong
             </Typography>
             <Typography sx={{ fontSize: 12, color: COLORS.grey, mt: 0.25 }}>{err}</Typography>
@@ -495,12 +552,12 @@ export default function HangoutVotingOverlay({ open, proposalId, onClose }: Prop
             sx={{
               p: 1.25,
               mb: 1.25,
-              borderRadius: 3,
-              backgroundColor: "rgba(255,255,255,0.65)",
+              borderRadius: 4,
+              backgroundColor: "rgba(255,255,255,0.75)",
               border: "1px solid rgba(0,0,0,0.06)",
             }}
           >
-            <Typography sx={{ fontWeight: 900, color: COLORS.offBlack, fontSize: 12 }}>
+            <Typography sx={{ fontWeight: 950, color: COLORS.offBlack, fontSize: 12 }}>
               Voting is closed
             </Typography>
             <Typography sx={{ fontSize: 12, color: COLORS.grey, mt: 0.25 }}>
@@ -514,10 +571,10 @@ export default function HangoutVotingOverlay({ open, proposalId, onClose }: Prop
           <Paper
             elevation={0}
             sx={{
-              p: 1.25,
+              p: 1.5,
               mb: 1.25,
-              borderRadius: 3,
-              backgroundColor: "rgba(255,255,255,0.65)",
+              borderRadius: 4,
+              backgroundColor: "rgba(255,255,255,0.7)",
               border: "1px solid rgba(0,0,0,0.06)",
               display: "flex",
               alignItems: "center",
@@ -526,7 +583,7 @@ export default function HangoutVotingOverlay({ open, proposalId, onClose }: Prop
             }}
           >
             <Box sx={{ minWidth: 0 }}>
-              <Typography sx={{ fontWeight: 900, color: COLORS.offBlack, fontSize: 12 }}>
+              <Typography sx={{ fontWeight: 950, color: COLORS.offBlack, fontSize: 12 }}>
                 Host controls
               </Typography>
               <Typography sx={{ fontSize: 12, color: COLORS.grey, mt: 0.25 }}>
@@ -549,86 +606,74 @@ export default function HangoutVotingOverlay({ open, proposalId, onClose }: Prop
           <Paper
             elevation={0}
             sx={{
-              p: 1.5,
+              p: 1.75,
               mb: 1.25,
-              borderRadius: 3,
-              backgroundColor: "rgba(255,255,255,0.75)",
+              borderRadius: 4,
+              backgroundColor: "rgba(255,255,255,0.78)",
               border: "1px solid rgba(0,0,0,0.08)",
             }}
           >
-            <Typography sx={{ fontWeight: 900, color: COLORS.offBlack, fontSize: 13 }}>
+            <Typography sx={{ fontWeight: 950, color: COLORS.offBlack, fontSize: 13 }}>
               Final Result
             </Typography>
 
             <Divider sx={{ my: 1.25 }} />
 
             <Box sx={{ display: "grid", gap: 0.75 }}>
-              <Typography sx={{ fontSize: 12, color: COLORS.offBlack, fontWeight: 900 }}>
-                Time
-              </Typography>
-              <Typography sx={{ fontSize: 12, color: COLORS.grey, fontWeight: 800 }}>
+              <InfoRow label="Time">
                 {overlay.final.chosen_slot
                   ? `${fmtDateTimeSG(overlay.final.chosen_slot.start_at)} → ${fmtDateTimeSG(
                       overlay.final.chosen_slot.end_at
                     )}`
                   : "-"}
-              </Typography>
+              </InfoRow>
 
-              <Typography sx={{ fontSize: 12, color: COLORS.offBlack, fontWeight: 900, mt: 0.75 }}>
-                Chosen
-              </Typography>
-              <Typography sx={{ fontSize: 12, color: COLORS.grey, fontWeight: 800 }}>
-                {overlay.final.chosen_title ?? "Time-only"}
-              </Typography>
+              <InfoRow label="Chosen">{overlay.final.chosen_title ?? "Time-only"}</InfoRow>
+              <InfoRow label="Location">{overlay.final.location ?? "-"}</InfoRow>
+              <InfoRow label="Notes">{overlay.final.notes ?? "-"}</InfoRow>
 
-              <Typography sx={{ fontSize: 12, color: COLORS.offBlack, fontWeight: 900, mt: 0.75 }}>
-                Location
-              </Typography>
-              <Typography sx={{ fontSize: 12, color: COLORS.grey, fontWeight: 800 }}>
-                {overlay.final.location ?? "-"}
-              </Typography>
-
-              <Typography sx={{ fontSize: 12, color: COLORS.offBlack, fontWeight: 900, mt: 0.75 }}>
-                Notes
-              </Typography>
-              <Typography sx={{ fontSize: 12, color: COLORS.grey, fontWeight: 800 }}>
-                {overlay.final.notes ?? "-"}
-              </Typography>
-
-              <Typography sx={{ fontSize: 11, color: COLORS.grey, fontWeight: 800, mt: 1 }}>
+              <Typography sx={{ fontSize: 11, color: COLORS.grey, fontWeight: 800, mt: 0.5 }}>
                 Status: {overlay.final.final_status} • Created: {fmtDateTimeSG(overlay.final.created_at)}
               </Typography>
             </Box>
           </Paper>
         )}
 
-        {/* Step 0: Pick dates (neater + quick actions) */}
+        {/* Step 0 */}
         {!loading && overlay && step === 0 && (
-          <Box sx={{ display: "grid", gap: 1 }}>
+          <Box sx={{ display: "grid", gap: 1.25 }}>
             <Paper
               elevation={0}
               sx={{
-                p: 1.25,
-                borderRadius: 3,
-                backgroundColor: "rgba(255,255,255,0.65)",
+                p: 1.5,
+                borderRadius: 4,
+                backgroundColor: "rgba(255,255,255,0.7)",
                 border: "1px solid rgba(0,0,0,0.06)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 1,
+                display: "grid",
+                gap: 1.25,
               }}
             >
-              <Box sx={{ minWidth: 0 }}>
-                <Typography sx={{ fontSize: 12, color: COLORS.offBlack, fontWeight: 900 }}>
-                  Quick actions
-                </Typography>
-                <Typography sx={{ fontSize: 12, color: COLORS.grey, fontWeight: 800 }}>
-                  Mark faster, or refresh using your calendar events.
-                </Typography>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                  gap: 1,
+                }}
+              >
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography sx={{ fontSize: 12, color: COLORS.offBlack, fontWeight: 950 }}>
+                    Quick actions
+                  </Typography>
+                  <Typography sx={{ fontSize: 12, color: COLORS.grey, fontWeight: 800 }}>
+                    Mark faster, or refresh using your calendar events.
+                  </Typography>
+                </Box>
+
+                <MiniBtn label="Sync calendar" disabled={!canVote || loading} onClick={syncCalendarNow} />
               </Box>
 
-              <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                <MiniBtn label="Sync calendar" disabled={!canVote || loading} onClick={syncCalendarNow} />
+              <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
                 <MiniBtn label="Free all" disabled={!canVote || loading} onClick={() => setAllTimeVotes("free")} />
                 <MiniBtn label="Busy all" disabled={!canVote || loading} onClick={() => setAllTimeVotes("busy")} />
                 <MiniBtn
@@ -653,9 +698,9 @@ export default function HangoutVotingOverlay({ open, proposalId, onClose }: Prop
                     key={t.slot_id}
                     elevation={0}
                     sx={{
-                      p: 1.25,
-                      borderRadius: 3,
-                      backgroundColor: "rgba(255,255,255,0.55)",
+                      p: 1.5,
+                      borderRadius: 4,
+                      backgroundColor: "rgba(255,255,255,0.6)",
                       border: "1px solid rgba(0,0,0,0.06)",
                       display: "grid",
                       gridTemplateColumns: "1fr auto",
@@ -664,7 +709,7 @@ export default function HangoutVotingOverlay({ open, proposalId, onClose }: Prop
                     }}
                   >
                     <Box sx={{ minWidth: 0 }}>
-                      <Typography sx={{ fontWeight: 900, color: COLORS.offBlack, fontSize: 13 }}>
+                      <Typography sx={{ fontWeight: 950, color: COLORS.offBlack, fontSize: 13 }}>
                         {fmtDaySG(t.start_at)}
                       </Typography>
 
@@ -672,9 +717,21 @@ export default function HangoutVotingOverlay({ open, proposalId, onClose }: Prop
                         {fmtTimeRangeSG(t.start_at, t.end_at)}
                       </Typography>
 
-                      <Typography sx={{ fontSize: 12, color: COLORS.grey, fontWeight: 800, mt: 0.35 }}>
-                        {t.free_count}/{total || "?"} free
-                      </Typography>
+                      <Box sx={{ mt: 0.75, display: "flex", alignItems: "center", gap: 0.75 }}>
+                        <Box
+                          sx={{
+                            px: 1,
+                            py: 0.45,
+                            borderRadius: 999,
+                            backgroundColor: "rgba(0,0,0,0.06)",
+                            color: COLORS.offBlack,
+                            fontSize: 11,
+                            fontWeight: 950,
+                          }}
+                        >
+                          {t.free_count}/{total || "?"} free
+                        </Box>
+                      </Box>
                     </Box>
 
                     <Segmented3
@@ -689,7 +746,7 @@ export default function HangoutVotingOverlay({ open, proposalId, onClose }: Prop
           </Box>
         )}
 
-        {/* Step 1: Swipe */}
+        {/* Step 1 */}
         {!loading && overlay && step === 1 && (
           <Box sx={{ display: "grid", gap: 1.25 }}>
             <Typography sx={{ fontSize: 12, color: COLORS.grey, fontWeight: 800 }}>
@@ -701,12 +758,12 @@ export default function HangoutVotingOverlay({ open, proposalId, onClose }: Prop
                 elevation={0}
                 sx={{
                   p: 2,
-                  borderRadius: 3,
-                  backgroundColor: "rgba(255,255,255,0.65)",
+                  borderRadius: 4,
+                  backgroundColor: "rgba(255,255,255,0.75)",
                   border: "1px solid rgba(0,0,0,0.06)",
                 }}
               >
-                <Typography sx={{ fontWeight: 900, color: COLORS.offBlack }}>No options yet</Typography>
+                <Typography sx={{ fontWeight: 950, color: COLORS.offBlack }}>No options yet</Typography>
                 <Typography sx={{ fontSize: 12, color: COLORS.grey, mt: 0.5 }}>
                   Add some {mode === "activity" ? "activities" : "experiences"} to vote on.
                 </Typography>
@@ -718,12 +775,12 @@ export default function HangoutVotingOverlay({ open, proposalId, onClose }: Prop
                 elevation={0}
                 sx={{
                   p: 2,
-                  borderRadius: 4,
-                  backgroundColor: "rgba(255,255,255,0.65)",
+                  borderRadius: 5,
+                  backgroundColor: "rgba(255,255,255,0.75)",
                   border: "1px solid rgba(0,0,0,0.08)",
                 }}
               >
-                <Typography sx={{ fontWeight: 900, color: COLORS.offBlack, fontSize: 16 }}>
+                <Typography sx={{ fontWeight: 950, color: COLORS.offBlack, fontSize: 16 }}>
                   {currentCard.title}
                 </Typography>
 
@@ -768,7 +825,7 @@ export default function HangoutVotingOverlay({ open, proposalId, onClose }: Prop
           </Box>
         )}
 
-        {/* Step 2: Review */}
+        {/* Step 2 */}
         {!loading && overlay && step === 2 && (
           <Box sx={{ display: "grid", gap: 1.25 }}>
             <Typography sx={{ fontSize: 12, color: COLORS.grey, fontWeight: 800 }}>
@@ -778,13 +835,13 @@ export default function HangoutVotingOverlay({ open, proposalId, onClose }: Prop
             <Paper
               elevation={0}
               sx={{
-                p: 1.5,
-                borderRadius: 3,
-                backgroundColor: "rgba(255,255,255,0.55)",
+                p: 1.75,
+                borderRadius: 4,
+                backgroundColor: "rgba(255,255,255,0.65)",
                 border: "1px solid rgba(0,0,0,0.06)",
               }}
             >
-              <Typography sx={{ fontWeight: 900, color: COLORS.offBlack, mb: 1 }}>
+              <Typography sx={{ fontWeight: 950, color: COLORS.offBlack, mb: 1 }}>
                 My dates (Free)
               </Typography>
 
@@ -809,13 +866,13 @@ export default function HangoutVotingOverlay({ open, proposalId, onClose }: Prop
             <Paper
               elevation={0}
               sx={{
-                p: 1.5,
-                borderRadius: 3,
-                backgroundColor: "rgba(255,255,255,0.55)",
+                p: 1.75,
+                borderRadius: 4,
+                backgroundColor: "rgba(255,255,255,0.65)",
                 border: "1px solid rgba(0,0,0,0.06)",
               }}
             >
-              <Typography sx={{ fontWeight: 900, color: COLORS.offBlack, mb: 1 }}>
+              <Typography sx={{ fontWeight: 950, color: COLORS.offBlack, mb: 1 }}>
                 My likes ({mode === "activity" ? "Activities" : "Experiences"})
               </Typography>
 
@@ -841,8 +898,8 @@ export default function HangoutVotingOverlay({ open, proposalId, onClose }: Prop
               elevation={0}
               sx={{
                 p: 1.25,
-                borderRadius: 3,
-                backgroundColor: "rgba(255,255,255,0.65)",
+                borderRadius: 4,
+                backgroundColor: "rgba(255,255,255,0.75)",
                 border: "1px solid rgba(0,0,0,0.06)",
               }}
             >
@@ -854,7 +911,7 @@ export default function HangoutVotingOverlay({ open, proposalId, onClose }: Prop
         )}
       </Box>
 
-      {/* Footer */}
+      {/* Footer (pill bar) */}
       <Box
         sx={{
           position: "sticky",
@@ -906,6 +963,19 @@ export default function HangoutVotingOverlay({ open, proposalId, onClose }: Prop
   );
 }
 
+function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <Box sx={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: 1 }}>
+      <Typography sx={{ fontSize: 12, color: COLORS.offBlack, fontWeight: 950 }}>
+        {label}
+      </Typography>
+      <Typography sx={{ fontSize: 12, color: COLORS.grey, fontWeight: 800 }}>
+        {children}
+      </Typography>
+    </Box>
+  );
+}
+
 function MiniBtn({
   label,
   disabled,
@@ -925,9 +995,9 @@ function MiniBtn({
         cursor: disabled ? "not-allowed" : "pointer",
         userSelect: "none",
         border: "1px solid rgba(0,0,0,0.10)",
-        backgroundColor: "rgba(255,255,255,0.8)",
+        backgroundColor: "rgba(255,255,255,0.82)",
         color: COLORS.offBlack,
-        fontWeight: 900,
+        fontWeight: 950,
         fontSize: 11,
         opacity: disabled ? 0.6 : 1,
         whiteSpace: "nowrap",
@@ -960,15 +1030,17 @@ function SegmentedItem({
         py: 0.75,
         px: 1,
         fontSize: 11,
-        fontWeight: 900,
+        fontWeight: 950,
         borderRadius: 999,
         cursor: disabled ? "not-allowed" : "pointer",
         userSelect: "none",
         border: active ? "1px solid rgba(0,0,0,0.22)" : "1px solid rgba(0,0,0,0.10)",
-        backgroundColor: active ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.75)",
+        backgroundColor: active ? "rgba(236,157,175,0.35)" : "rgba(255,255,255,0.78)",
         color: COLORS.offBlack,
         opacity: disabled ? 0.6 : 1,
         whiteSpace: "nowrap",
+        transition: "transform 0.08s ease",
+        "&:active": { transform: "scale(0.99)" },
       }}
     >
       {label}
@@ -992,7 +1064,7 @@ function Segmented3({
         gap: 0.6,
         alignItems: "center",
         justifyContent: "flex-end",
-        minWidth: 160,
+        minWidth: 170,
       }}
     >
       <SegmentedItem
@@ -1020,7 +1092,6 @@ function Segmented3({
   );
 }
 
-
 function ActionButton({
   icon,
   label,
@@ -1045,17 +1116,19 @@ function ActionButton({
         gap: 1,
         px: 1.25,
         py: 1,
-        borderRadius: 3,
+        borderRadius: 999,
         cursor: disabled ? "not-allowed" : "pointer",
         userSelect: "none",
         border: "1px solid rgba(0,0,0,0.10)",
-        backgroundColor: primary ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.75)",
+        backgroundColor: primary ? "rgba(236,157,175,0.35)" : "rgba(255,255,255,0.78)",
         color: COLORS.offBlack,
-        fontWeight: 900,
+        fontWeight: 950,
         fontSize: 12,
         opacity: disabled ? 0.6 : 1,
         position: "relative",
         zIndex: 10,
+        transition: "transform 0.08s ease",
+        "&:active": { transform: "scale(0.99)" },
       }}
     >
       {icon}
@@ -1090,14 +1163,16 @@ function FooterBtn({
         cursor: disabled ? "not-allowed" : "pointer",
         userSelect: "none",
         border: "1px solid rgba(0,0,0,0.10)",
-        backgroundColor: primary ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.75)",
+        backgroundColor: primary ? "rgba(236,157,175,0.35)" : "rgba(255,255,255,0.78)",
         color: COLORS.offBlack,
-        fontWeight: 900,
+        fontWeight: 950,
         fontSize: 12,
         opacity: disabled ? 0.6 : 1,
         whiteSpace: "nowrap",
         position: "relative",
         zIndex: 10,
+        transition: "transform 0.08s ease",
+        "&:active": { transform: "scale(0.99)" },
       }}
     >
       {icon}

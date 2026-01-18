@@ -6,6 +6,9 @@ import { COLORS } from "../constants/colors";
 import { apiGet, apiPost } from "../utils/api";
 import { apiGetOverlay } from "../utils/api";
 
+// ✅ Layout (curved sheet)
+import PageSheetLayout from "../components/PageSheetLayout";
+
 // ✅ Voting overlay (wizard)
 import HangoutVotingOverlay from "../components/HangoutVotingOverlay";
 // ✅ Final overlay (final details + accept/reject)
@@ -15,9 +18,6 @@ import HangoutFinalOverlay from "../components/HangoutFinalOverlay";
 const myUserId = import.meta.env.VITE_HOST_USER_ID ?? "";
 
 type Hangout = {
-  // NOTE: your API currently uses hangout_id but your overlay routes use proposalId.
-  // If hangout_id == proposal_id in your backend, keep as-is.
-  // If not, rename hangout_id to proposal_id in your API response (recommended).
   hangout_id: string;
   title: string;
   status: string; // "voting" | "finalized" etc.
@@ -43,7 +43,6 @@ type CreateInviteResponse = {
 };
 
 function isFinalisedHangout(h: Hangout) {
-  // pick whatever your backend actually sets
   const s = String(h.status || "").toLowerCase();
   if (s === "finalized" || s === "finalised") return true;
   if (s === "confirmed" || s === "cancelled") return true;
@@ -103,43 +102,42 @@ export default function GroupDetail() {
     }
   }
 
-async function onClickHangout(h: Hangout) {
-  const proposalId = h.hangout_id;
-  setActiveProposalId(proposalId);
+  async function onClickHangout(h: Hangout) {
+    const proposalId = h.hangout_id;
+    setActiveProposalId(proposalId);
 
-  try {
-    const overlay = await apiGetOverlay(proposalId, myUserId);
+    try {
+      const overlay = await apiGetOverlay(proposalId, myUserId);
 
-    const locked =
-      !!overlay?.proposal?.locked_at ||
-      String(overlay?.proposal?.status || "").toLowerCase() === "finalized" ||
-      !!overlay?.final;
+      const locked =
+        !!overlay?.proposal?.locked_at ||
+        String(overlay?.proposal?.status || "").toLowerCase() === "finalized" ||
+        !!overlay?.final;
 
-    if (locked) {
-      setOpenFinal(true);
-      setOpenVote(false);
-    } else {
-      setOpenVote(true);
-      setOpenFinal(false);
-    }
-  } catch {
-    // fallback to current list state if overlay fails
-    if (isFinalisedHangout(h)) {
-      setOpenFinal(true);
-      setOpenVote(false);
-    } else {
-      setOpenVote(true);
-      setOpenFinal(false);
+      if (locked) {
+        setOpenFinal(true);
+        setOpenVote(false);
+      } else {
+        setOpenVote(true);
+        setOpenFinal(false);
+      }
+    } catch {
+      // fallback to current list state if overlay fails
+      if (isFinalisedHangout(h)) {
+        setOpenFinal(true);
+        setOpenVote(false);
+      } else {
+        setOpenVote(true);
+        setOpenFinal(false);
+      }
     }
   }
-}
 
-async function refreshGroup() {
-  if (!groupId) return;
-  const json = await apiGet<GroupDetailData>(`/api/groups/${groupId}`);
-  setData(json);
-}
-
+  async function refreshGroup() {
+    if (!groupId) return;
+    const json = await apiGet<GroupDetailData>(`/api/groups/${groupId}`);
+    setData(json);
+  }
 
   function closeAllOverlays() {
     setOpenVote(false);
@@ -148,9 +146,47 @@ async function refreshGroup() {
   }
 
   return (
-    <Box sx={{ px: 2, pt: 2 }}>
+    <PageSheetLayout
+      title={data?.name ?? "Group"}
+      headerRight={
+        canInitiate ? (
+          <Box
+            onClick={copyInviteLink}
+            sx={{
+              px: 1.5,
+              py: 1,
+              borderRadius: 999,
+              backgroundColor: "rgba(255,255,255,0.22)",
+              border: "1px solid rgba(255,255,255,0.28)",
+              color: COLORS.offWhite,
+              fontWeight: 900,
+              fontSize: 12,
+              cursor: "pointer",
+              userSelect: "none",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Copy invite
+          </Box>
+        ) : null
+      }
+      sheetPb={10}
+    >
       {!data && !err && (
-        <Typography sx={{ color: COLORS.grey, fontSize: 13 }}>Loading…</Typography>
+        <Paper
+          elevation={0}
+          sx={{
+            p: 2,
+            borderRadius: 4,
+            backgroundColor: "rgba(255,255,255,0.65)",
+            border: "1px dashed rgba(0,0,0,0.18)",
+          }}
+        >
+          <Typography sx={{ fontWeight: 900, color: COLORS.offBlack }}>Loading…</Typography>
+          <Typography sx={{ fontSize: 12, color: COLORS.grey, mt: 0.5 }}>
+            Fetching group details
+          </Typography>
+        </Paper>
       )}
 
       {err && (
@@ -158,8 +194,8 @@ async function refreshGroup() {
           elevation={0}
           sx={{
             p: 2,
-            borderRadius: 3,
-            backgroundColor: COLORS.offWhite,
+            borderRadius: 4,
+            backgroundColor: "rgba(255,255,255,0.65)",
             border: "1px dashed rgba(0,0,0,0.18)",
           }}
         >
@@ -170,58 +206,36 @@ async function refreshGroup() {
 
       {data && (
         <>
-          <Box
+          {/* Top info block */}
+          <Paper
+            elevation={0}
             sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 1,
+              p: 2,
+              borderRadius: 4,
+              backgroundColor: "rgba(255,255,255,0.65)",
+              border: "1px solid rgba(0,0,0,0.06)",
             }}
           >
-            <Box>
-              <Typography sx={{ fontWeight: 900, fontSize: 22, color: COLORS.offBlack }}>
-                {data.name}
-              </Typography>
-
-              <Typography sx={{ fontSize: 12, color: COLORS.grey }}>
-                You: {data.my_role}
-              </Typography>
-
-              {!!myUserId && (
-                <Typography sx={{ fontSize: 11, color: COLORS.grey }}>
-                  (MVP user) {myUserId.slice(0, 6)}…
-                </Typography>
-              )}
-            </Box>
-
-            {canInitiate && (
-              <Box sx={{ display: "flex", gap: 1 }}>
-                <Box
-                  onClick={copyInviteLink}
-                  sx={{
-                    px: 1.5,
-                    py: 1,
-                    borderRadius: 999,
-                    backgroundColor: "rgba(255,255,255,0.75)",
-                    border: "1px solid rgba(0,0,0,0.10)",
-                    color: COLORS.offBlack,
-                    fontWeight: 900,
-                    fontSize: 12,
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  Copy invite
-                </Box>
-              </Box>
-            )}
-          </Box>
-
-          {inviteMsg && (
-            <Typography sx={{ mt: 1, fontSize: 12, color: COLORS.grey, fontWeight: 800 }}>
-              {inviteMsg}
+            <Typography sx={{ fontWeight: 900, fontSize: 18, color: COLORS.offBlack }}>
+              {data.name}
             </Typography>
-          )}
+
+            <Typography sx={{ fontSize: 12, color: COLORS.grey, mt: 0.25 }}>
+              You: {data.my_role}
+            </Typography>
+
+            {!!myUserId && (
+              <Typography sx={{ fontSize: 11, color: COLORS.grey, mt: 0.25 }}>
+                (MVP user) {myUserId.slice(0, 6)}…
+              </Typography>
+            )}
+
+            {inviteMsg && (
+              <Typography sx={{ mt: 1, fontSize: 12, color: COLORS.grey, fontWeight: 800 }}>
+                {inviteMsg}
+              </Typography>
+            )}
+          </Paper>
 
           <Box sx={{ mt: 2, display: "grid", gap: 1.25 }}>
             <Section title="Hangouts">
@@ -238,11 +252,13 @@ async function refreshGroup() {
                         elevation={0}
                         onClick={() => onClickHangout(h)}
                         sx={{
-                          p: 1.25,
-                          borderRadius: 3,
+                          p: 1.5,
+                          borderRadius: 4,
                           backgroundColor: "rgba(255,255,255,0.55)",
                           border: "1px solid rgba(0,0,0,0.06)",
                           cursor: "pointer",
+                          transition: "transform 0.12s ease",
+                          "&:active": { transform: "scale(0.99)" },
                         }}
                       >
                         <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
@@ -250,9 +266,22 @@ async function refreshGroup() {
                             {h.title}
                           </Typography>
 
-                          <Typography sx={{ fontSize: 12, color: COLORS.grey, fontWeight: 800 }}>
+                          <Box
+                            sx={{
+                              px: 1.1,
+                              py: 0.55,
+                              borderRadius: 999,
+                              fontSize: 12,
+                              fontWeight: 900,
+                              backgroundColor: finalised
+                                ? "rgba(0,0,0,0.06)"
+                                : "rgba(236,157,175,0.35)",
+                              color: COLORS.offBlack,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
                             {finalised ? "finalised" : "voting"}
-                          </Typography>
+                          </Box>
                         </Box>
 
                         <Typography sx={{ fontSize: 12, color: COLORS.grey, mt: 0.5 }}>
@@ -274,7 +303,7 @@ async function refreshGroup() {
                       px: 1.25,
                       py: 0.75,
                       borderRadius: 999,
-                      backgroundColor: COLORS.offWhite,
+                      backgroundColor: "rgba(255,255,255,0.7)",
                       border: "1px solid rgba(0,0,0,0.06)",
                       fontSize: 12,
                       color: COLORS.offBlack,
@@ -289,26 +318,25 @@ async function refreshGroup() {
           </Box>
 
           <HangoutVotingOverlay
-  open={openVote}
-  proposalId={activeProposalId}
-  onClose={() => {
-    closeAllOverlays();
-    refreshGroup();
-  }}
-/>
+            open={openVote}
+            proposalId={activeProposalId}
+            onClose={() => {
+              closeAllOverlays();
+              refreshGroup();
+            }}
+          />
 
-<HangoutFinalOverlay
-  open={openFinal}
-  proposalId={activeProposalId}
-  onClose={() => {
-    closeAllOverlays();
-    refreshGroup();
-  }}
-/>
-
+          <HangoutFinalOverlay
+            open={openFinal}
+            proposalId={activeProposalId}
+            onClose={() => {
+              closeAllOverlays();
+              refreshGroup();
+            }}
+          />
         </>
       )}
-    </Box>
+    </PageSheetLayout>
   );
 }
 
@@ -317,9 +345,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     <Paper
       elevation={0}
       sx={{
-        p: 1.5,
-        borderRadius: 3,
-        backgroundColor: COLORS.offWhite,
+        p: 1.75,
+        borderRadius: 4,
+        backgroundColor: "rgba(255,255,255,0.65)",
         border: "1px solid rgba(0,0,0,0.06)",
       }}
     >

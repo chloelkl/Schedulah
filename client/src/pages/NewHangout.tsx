@@ -1,12 +1,11 @@
 // client/src/pages/NewHangout.tsx
 import { useMemo, useState } from "react";
-import { Box, Paper, Typography, TextField, MenuItem, Chip, Switch } from "@mui/material";
+import { Box, Paper, Typography, TextField, MenuItem, Chip, Switch, Divider } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import { COLORS } from "../constants/colors";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:3000";
 const HOST_USER_ID = "5f4462e1-9a63-48b0-88e7-3be85ee3bb9a"; // MVP: replace later with auth user
-
 
 type VotingType = "time_only" | "time_activity" | "time_event";
 type WindowPreset = "next_week" | "next_2_weeks" | "next_month";
@@ -89,308 +88,397 @@ export default function NewHangout() {
 
   const showLocationOptions = showTimeActivity && enableLocationOptions;
 
- const onCreate = async () => {
-const payload = {
-  host_user_id: HOST_USER_ID,
-  title,
-  date_start: dateRange.date_from,
-  date_end: dateRange.date_to,
-  voting_type: votingType,
-  activity_hint: votingType === "time_only" ? (activityHint.trim() || null) : null,
-  location_hint: votingType === "time_only" ? (locationHint.trim() || null) : null,
-  location_options:
-    votingType === "time_activity"
-      ? locationOptions.map((x) => x.trim()).filter(Boolean)
-      : [],
-};
+  const onCreate = async () => {
+    const payload = {
+      host_user_id: HOST_USER_ID,
+      title,
+      date_start: dateRange.date_from,
+      date_end: dateRange.date_to,
+      voting_type: votingType,
+      activity_hint: votingType === "time_only" ? (activityHint.trim() || null) : null,
+      location_hint: votingType === "time_only" ? (locationHint.trim() || null) : null,
+      location_options:
+        votingType === "time_activity"
+          ? locationOptions.map((x) => x.trim()).filter(Boolean)
+          : [],
+    };
 
+    try {
+      const res = await fetch(`${API}/api/groups/${groupId}/hangouts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-try {
-  const res = await fetch(`${API}/api/groups/${groupId}/hangouts`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+      const json: unknown = await res.json().catch(() => ({}));
+      const errMsg = (json as { error?: string })?.error ?? "Failed to create hangout";
 
-  const json: unknown = await res.json().catch(() => ({}));
-  const errMsg =
-    (json as { error?: string })?.error ?? "Failed to create hangout";
+      if (!res.ok) throw new Error(errMsg);
 
-  if (!res.ok) throw new Error(errMsg);
-
-  nav(`/groups/${groupId}`);
-} catch (e: unknown) {
-  const message = e instanceof Error ? e.message : "Failed to create hangout";
-  alert(message);
-}}
-
-
+      nav(`/groups/${groupId}`);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Failed to create hangout";
+      alert(message);
+    }
+  };
 
   return (
-    <Box sx={{ px: 2, pt: 2 }}>
-      <Typography sx={{ fontWeight: 900, fontSize: 22, color: COLORS.offBlack }}>
-        Initiate hangout
-      </Typography>
-      <Typography sx={{ fontSize: 12, color: COLORS.grey }}>
-        Pick a window and what your group votes on.
-      </Typography>
-
+    <Box
+      sx={{
+        minHeight: "100vh",
+        backgroundColor: COLORS.darkRed,
+        color: COLORS.offWhite,
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "flex-start",
+      }}
+    >
       <Paper
         elevation={0}
         sx={{
-          mt: 2,
-          p: 1.5,
-          borderRadius: 3,
-          backgroundColor: COLORS.offWhite,
-          border: "1px solid rgba(0,0,0,0.06)",
-          display: "grid",
-          gap: 1.25,
+          width: "100%",
+          minHeight: "100vh",
+          backgroundColor: COLORS.darkRed,
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
-        <TextField
-          label="Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          size="small"
-          sx={fieldSx}
-        />
-
-        {/* Time window preset */}
-        <Box sx={{ display: "grid", gap: 0.75 }}>
-          <TextField
-            label="Time window"
-            select
-            value={windowPreset}
-            onChange={(e) => setWindowPreset(e.target.value as WindowPreset)}
-            size="small"
-            sx={fieldSx}
-          >
-            <MenuItem value="next_week">Next week</MenuItem>
-            <MenuItem value="next_2_weeks">Next 2 weeks</MenuItem>
-            <MenuItem value="next_month">Next month</MenuItem>
-          </TextField>
-
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-            <Chip size="small" label={`From ${dateRange.date_from}`} sx={chipSx} />
-            <Chip size="small" label={`To ${dateRange.date_to}`} sx={chipSx} />
-          </Box>
+        {/* Sticky red header */}
+        <Box
+          sx={{
+            position: "sticky",
+            top: 0,
+            zIndex: 50,
+            backgroundColor: COLORS.darkRed,
+            textAlign: "center",
+            py: 3,
+            px: 2,
+          }}
+        >
+          <Typography variant="h6" fontWeight={600} color={COLORS.offWhite}>
+            Initiate hangout
+          </Typography>
+          <Typography sx={{ mt: 0.5, fontSize: 12, color: "rgba(255,255,255,0.75)" }}>
+            Pick a window and what your group votes on.
+          </Typography>
         </Box>
 
-        {/* Voting type */}
-        <TextField
-          label="People vote for"
-          select
-          value={votingType}
-          onChange={(e) => onChangeVotingType(e.target.value as VotingType)}
-          size="small"
-          sx={fieldSx}
+        {/* Beige curved sheet */}
+        <Box
+          sx={{
+            backgroundColor: COLORS.offWhite,
+            borderTopLeftRadius: 40,
+            borderTopRightRadius: 40,
+            flexGrow: 1,
+            mt: "auto",
+            px: 2.25,
+            pt: 2.25,
+            pb: 10,
+            color: COLORS.offBlack,
+          }}
         >
-          <MenuItem value="time_only">Time only</MenuItem>
-          <MenuItem value="time_activity">Time + activity</MenuItem>
-          <MenuItem value="time_event">Time + event</MenuItem>
-        </TextField>
-
-        {/* time_only: optional indications */}
-        {showTimeOnly && (
-          <>
-            <Box
-              sx={{
-                borderRadius: 3,
-                p: 1.25,
-                backgroundColor: "rgba(255,255,255,0.55)",
-                border: "1px solid rgba(0,0,0,0.06)",
-                display: "grid",
-                gap: 1,
-              }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <Box>
-                  <Typography sx={{ fontWeight: 900, color: COLORS.offBlack }}>
-                    Activity (optional, not voted)
-                  </Typography>
-                  <Typography sx={{ fontSize: 12, color: COLORS.grey }}>
-                    Adds context only. People will still vote on time.
-                  </Typography>
-                </Box>
-
-                <Switch
-                  checked={enableActivityHint}
-                  onChange={(e) => setEnableActivityHint(e.target.checked)}
-                />
-              </Box>
-
-              {showActivityHint && (
-                <TextField
-                  value={activityHint}
-                  onChange={(e) => setActivityHint(e.target.value)}
-                  size="small"
-                  placeholder="e.g. picnic / movie / dinner..."
-                  sx={fieldSx}
-                />
-              )}
-            </Box>
-
-            <Box
-              sx={{
-                borderRadius: 3,
-                p: 1.25,
-                backgroundColor: "rgba(255,255,255,0.55)",
-                border: "1px solid rgba(0,0,0,0.06)",
-                display: "grid",
-                gap: 1,
-              }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <Box>
-                  <Typography sx={{ fontWeight: 900, color: COLORS.offBlack }}>
-                    Location (optional, not voted)
-                  </Typography>
-                  <Typography sx={{ fontSize: 12, color: COLORS.grey }}>
-                    Adds context only. People will still vote on time.
-                  </Typography>
-                </Box>
-
-                <Switch
-                  checked={enableLocationHint}
-                  onChange={(e) => setEnableLocationHint(e.target.checked)}
-                />
-              </Box>
-
-              {showLocationHint && (
-                <TextField
-                  value={locationHint}
-                  onChange={(e) => setLocationHint(e.target.value)}
-                  size="small"
-                  placeholder="e.g. Bugis / Orchard / East side..."
-                  sx={fieldSx}
-                />
-              )}
-            </Box>
-          </>
-        )}
-
-        {/* time_activity: location options */}
-        {showTimeActivity && (
-          <Box
+          {/* Main content card (same content, nicer layout) */}
+          <Paper
+            elevation={0}
             sx={{
-              borderRadius: 3,
-              p: 1.25,
-              backgroundColor: "rgba(255,255,255,0.55)",
+              mt: 0.5,
+              p: 1.75,
+              borderRadius: 4,
+              backgroundColor: "rgba(255,255,255,0.65)",
               border: "1px solid rgba(0,0,0,0.06)",
               display: "grid",
-              gap: 1,
+              gap: 1.25,
             }}
           >
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <Box>
-                <Typography sx={{ fontWeight: 900, color: COLORS.offBlack }}>
-                  Location options (needed)
-                </Typography>
-                <Typography sx={{ fontSize: 12, color: COLORS.grey }}>
-                  Add places/areas your group can choose from.
-                </Typography>
-              </Box>
-
-              <Switch
-                checked={enableLocationOptions}
-                onChange={(e) => setEnableLocationOptions(e.target.checked)}
-              />
+            {/* Title */}
+            <Box>
+              <Typography sx={{ fontWeight: 900, color: COLORS.offBlack, mb: 1 }}>
+                Details
+              </Typography>
+              <Divider sx={{ mb: 1.25, opacity: 0.6 }} />
             </Box>
 
-            {showLocationOptions && (
+            <TextField
+              label="Title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              size="small"
+              sx={fieldSx}
+            />
+
+            {/* Time window preset */}
+            <Box
+              sx={{
+                borderRadius: 3,
+                p: 1.25,
+                backgroundColor: "rgba(255,255,255,0.55)",
+                border: "1px solid rgba(0,0,0,0.06)",
+                display: "grid",
+                gap: 0.85,
+              }}
+            >
+              <Typography sx={{ fontWeight: 900, color: COLORS.offBlack }}>
+                Time window
+              </Typography>
+              <Typography sx={{ fontSize: 12, color: COLORS.grey, mt: -0.25 }}>
+                This controls the dates members will vote on.
+              </Typography>
+
+              <TextField
+                label="Preset"
+                select
+                value={windowPreset}
+                onChange={(e) => setWindowPreset(e.target.value as WindowPreset)}
+                size="small"
+                sx={fieldSx}
+              >
+                <MenuItem value="next_week">Next week</MenuItem>
+                <MenuItem value="next_2_weeks">Next 2 weeks</MenuItem>
+                <MenuItem value="next_month">Next month</MenuItem>
+              </TextField>
+
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                <Chip size="small" label={`From ${dateRange.date_from}`} sx={chipSx} />
+                <Chip size="small" label={`To ${dateRange.date_to}`} sx={chipSx} />
+              </Box>
+            </Box>
+
+            {/* Voting type */}
+            <Box
+              sx={{
+                borderRadius: 3,
+                p: 1.25,
+                backgroundColor: "rgba(255,255,255,0.55)",
+                border: "1px solid rgba(0,0,0,0.06)",
+                display: "grid",
+                gap: 0.85,
+              }}
+            >
+              <Typography sx={{ fontWeight: 900, color: COLORS.offBlack }}>
+                People vote for
+              </Typography>
+              <Typography sx={{ fontSize: 12, color: COLORS.grey, mt: -0.25 }}>
+                Choose what kind of decision your group makes together.
+              </Typography>
+
+              <TextField
+                label="Voting type"
+                select
+                value={votingType}
+                onChange={(e) => onChangeVotingType(e.target.value as VotingType)}
+                size="small"
+                sx={fieldSx}
+              >
+                <MenuItem value="time_only">Time only</MenuItem>
+                <MenuItem value="time_activity">Time + activity</MenuItem>
+                <MenuItem value="time_event">Time + event</MenuItem>
+              </TextField>
+            </Box>
+
+            {/* time_only: optional indications */}
+            {showTimeOnly && (
               <>
-                <Box sx={{ display: "grid", gap: 1 }}>
-                  {locationOptions.map((loc, i) => (
-                    <Box
-                      key={i}
-                      sx={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr auto",
-                        gap: 1,
-                        alignItems: "center",
-                      }}
-                    >
-                      <TextField
-                        value={loc}
-                        onChange={(e) => updateLocOpt(i, e.target.value)}
-                        size="small"
-                        placeholder="e.g. Bugis, Orchard, Tampines..."
-                        sx={fieldSx}
-                      />
-                      <Box
-                        onClick={() => removeLocOpt(i)}
-                        sx={pillIconSx}
-                        role="button"
-                        aria-label="Remove location"
-                      >
-                        ✕
-                      </Box>
+                <Box
+                  sx={{
+                    borderRadius: 3,
+                    p: 1.25,
+                    backgroundColor: "rgba(255,255,255,0.55)",
+                    border: "1px solid rgba(0,0,0,0.06)",
+                    display: "grid",
+                    gap: 1,
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <Box>
+                      <Typography sx={{ fontWeight: 900, color: COLORS.offBlack }}>
+                        Activity (optional, not voted)
+                      </Typography>
+                      <Typography sx={{ fontSize: 12, color: COLORS.grey }}>
+                        Adds context only. People will still vote on time.
+                      </Typography>
                     </Box>
-                  ))}
+
+                    <Switch
+                      checked={enableActivityHint}
+                      onChange={(e) => setEnableActivityHint(e.target.checked)}
+                    />
+                  </Box>
+
+                  {showActivityHint && (
+                    <TextField
+                      value={activityHint}
+                      onChange={(e) => setActivityHint(e.target.value)}
+                      size="small"
+                      placeholder="e.g. picnic / movie / dinner..."
+                      sx={fieldSx}
+                    />
+                  )}
                 </Box>
 
-                <Box onClick={addLocOpt} sx={miniPillSx}>
-                  + Add location
+                <Box
+                  sx={{
+                    borderRadius: 3,
+                    p: 1.25,
+                    backgroundColor: "rgba(255,255,255,0.55)",
+                    border: "1px solid rgba(0,0,0,0.06)",
+                    display: "grid",
+                    gap: 1,
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <Box>
+                      <Typography sx={{ fontWeight: 900, color: COLORS.offBlack }}>
+                        Location (optional, not voted)
+                      </Typography>
+                      <Typography sx={{ fontSize: 12, color: COLORS.grey }}>
+                        Adds context only. People will still vote on time.
+                      </Typography>
+                    </Box>
+
+                    <Switch
+                      checked={enableLocationHint}
+                      onChange={(e) => setEnableLocationHint(e.target.checked)}
+                    />
+                  </Box>
+
+                  {showLocationHint && (
+                    <TextField
+                      value={locationHint}
+                      onChange={(e) => setLocationHint(e.target.value)}
+                      size="small"
+                      placeholder="e.g. Bugis / Orchard / East side..."
+                      sx={fieldSx}
+                    />
+                  )}
                 </Box>
               </>
             )}
-          </Box>
-        )}
 
-        {/* time_event: nothing */}
-        {showTimeEvent && (
-          <Box
-            sx={{
-              borderRadius: 3,
-              p: 1.25,
-              backgroundColor: "rgba(255,255,255,0.55)",
-              border: "1px solid rgba(0,0,0,0.06)",
-            }}
-          >
-            <Typography sx={{ fontWeight: 900, color: COLORS.offBlack }}>
-              No extra setup needed
-            </Typography>
-            <Typography sx={{ fontSize: 12, color: COLORS.grey }}>
-              You’re creating a vote for time + event.
-            </Typography>
-          </Box>
-        )}
+            {/* time_activity: location options */}
+            {showTimeActivity && (
+              <Box
+                sx={{
+                  borderRadius: 3,
+                  p: 1.25,
+                  backgroundColor: "rgba(255,255,255,0.55)",
+                  border: "1px solid rgba(0,0,0,0.06)",
+                  display: "grid",
+                  gap: 1,
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <Box>
+                    <Typography sx={{ fontWeight: 900, color: COLORS.offBlack }}>
+                      Location options (needed)
+                    </Typography>
+                    <Typography sx={{ fontSize: 12, color: COLORS.grey }}>
+                      Add places/areas your group can choose from.
+                    </Typography>
+                  </Box>
 
-        {/* Actions */}
-        <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
-          <Box
-            onClick={() => nav(`/groups/${groupId}`)}
-            sx={{
-              flex: 1,
-              py: 1.2,
-              borderRadius: 999,
-              textAlign: "center",
-              cursor: "pointer",
-              fontWeight: 900,
-              backgroundColor: "rgba(0,0,0,0.06)",
-              color: COLORS.offBlack,
-              userSelect: "none",
-            }}
-          >
-            Cancel
-          </Box>
-          <Box
-            onClick={onCreate}
-            sx={{
-              flex: 1,
-              py: 1.2,
-              borderRadius: 999,
-              textAlign: "center",
-              cursor: "pointer",
-              fontWeight: 900,
-              backgroundColor: COLORS.accentPink,
-              color: COLORS.offBlack,
-              boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
-              userSelect: "none",
-            }}
-          >
-            Create
-          </Box>
+                  <Switch
+                    checked={enableLocationOptions}
+                    onChange={(e) => setEnableLocationOptions(e.target.checked)}
+                  />
+                </Box>
+
+                {showLocationOptions && (
+                  <>
+                    <Box sx={{ display: "grid", gap: 1 }}>
+                      {locationOptions.map((loc, i) => (
+                        <Box
+                          key={i}
+                          sx={{
+                            display: "grid",
+                            gridTemplateColumns: "1fr auto",
+                            gap: 1,
+                            alignItems: "center",
+                          }}
+                        >
+                          <TextField
+                            value={loc}
+                            onChange={(e) => updateLocOpt(i, e.target.value)}
+                            size="small"
+                            placeholder="e.g. Bugis, Orchard, Tampines..."
+                            sx={fieldSx}
+                          />
+                          <Box
+                            onClick={() => removeLocOpt(i)}
+                            sx={pillIconSx}
+                            role="button"
+                            aria-label="Remove location"
+                          >
+                            ✕
+                          </Box>
+                        </Box>
+                      ))}
+                    </Box>
+
+                    <Box onClick={addLocOpt} sx={miniPillSx}>
+                      + Add location
+                    </Box>
+                  </>
+                )}
+              </Box>
+            )}
+
+            {/* time_event: nothing */}
+            {showTimeEvent && (
+              <Box
+                sx={{
+                  borderRadius: 3,
+                  p: 1.25,
+                  backgroundColor: "rgba(255,255,255,0.55)",
+                  border: "1px solid rgba(0,0,0,0.06)",
+                }}
+              >
+                <Typography sx={{ fontWeight: 900, color: COLORS.offBlack }}>
+                  No extra setup needed
+                </Typography>
+                <Typography sx={{ fontSize: 12, color: COLORS.grey }}>
+                  You’re creating a vote for time + event.
+                </Typography>
+              </Box>
+            )}
+
+            {/* Actions */}
+            <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
+              <Box
+                onClick={() => nav(`/groups/${groupId}`)}
+                sx={{
+                  flex: 1,
+                  py: 1.2,
+                  borderRadius: 999,
+                  textAlign: "center",
+                  cursor: "pointer",
+                  fontWeight: 900,
+                  backgroundColor: "rgba(0,0,0,0.06)",
+                  color: COLORS.offBlack,
+                  userSelect: "none",
+                }}
+              >
+                Cancel
+              </Box>
+              <Box
+                onClick={onCreate}
+                sx={{
+                  flex: 1,
+                  py: 1.2,
+                  borderRadius: 999,
+                  textAlign: "center",
+                  cursor: "pointer",
+                  fontWeight: 900,
+                  backgroundColor: COLORS.accentPink,
+                  color: COLORS.offBlack,
+                  boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
+                  userSelect: "none",
+                }}
+              >
+                Create
+              </Box>
+            </Box>
+          </Paper>
         </Box>
       </Paper>
     </Box>
