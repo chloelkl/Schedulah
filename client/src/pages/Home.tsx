@@ -373,7 +373,7 @@ export default function Home() {
           borderTopRightRadius: 40,
           position: 'fixed',
           width: '100%',
-          height: '100%'
+          height: '100%',
         }}
       >
         <Typography fontWeight={600} sx={{ m: 3 }} fontSize={18}>
@@ -390,7 +390,8 @@ export default function Home() {
             No events for this day.
           </Typography>
         ) : (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.1, m: 2 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.1, m: 2, pb: 5, height: '15%', overflow: 'auto' }}>
+
             {events.map((e) => (
               <Box
                 key={e.event_id}

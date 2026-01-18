@@ -13,7 +13,7 @@ function App() {
   return (
     <Router>
       {/* Main content */}
-      <Container sx={{ padding: 0, pb: 10 }}>
+      <Container sx={{ padding: 0 }}>
         <Routes>
           <Route path="/" element={<Home />} />
           {/* Event */}

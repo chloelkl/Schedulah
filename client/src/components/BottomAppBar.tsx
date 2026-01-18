@@ -13,8 +13,12 @@ export function BottomAppBar() {
 
   const path = location.pathname;
 
+  console.log("path here,", path)
+
   const isHome = path === "/";
-  const isGroups = path === "/groups";
+  const isGroups =
+    path === "/groups" ||
+    (path !== "/groups/new" && !!matchPath({ path: "/groups/:groupId", end: true }, path))
   const isSettings = path === "/settings";
 
   const isAddEvent = path === "/events/new";
