@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Box, Paper, Typography, TextField, Button } from "@mui/material";
+import { Box, Paper, Typography, TextField, Button, Divider } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { COLORS } from "../constants/colors";
 
@@ -62,11 +62,7 @@ export default function NewGroup() {
       nav("/groups");
     } catch (e: unknown) {
       const message =
-        e instanceof Error
-          ? e.message
-          : typeof e === "string"
-          ? e
-          : "Failed to create group";
+        e instanceof Error ? e.message : typeof e === "string" ? e : "Failed to create group";
       setErrMsg(message);
     } finally {
       setLoading(false);
@@ -74,100 +70,159 @@ export default function NewGroup() {
   }
 
   return (
-    <Box sx={{ px: 2, pt: 2 }}>
-      <Typography sx={{ fontWeight: 800, fontSize: 22, color: COLORS.offBlack }}>
-        New Group
-      </Typography>
-      <Typography sx={{ mt: 0.5, fontSize: 13, color: COLORS.grey }}>
-        Create a group to plan hangouts (no chat).
-      </Typography>
-
+    <Box
+      sx={{
+        minHeight: "100vh",
+        backgroundColor: COLORS.darkRed,
+        color: COLORS.offWhite,
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "flex-start",
+      }}
+    >
       <Paper
         elevation={0}
         sx={{
-          mt: 2,
-          p: 2,
-          borderRadius: 3,
-          backgroundColor: COLORS.offWhite,
-          border: "1px solid rgba(0,0,0,0.06)",
+          width: "100%",
+          minHeight: "100vh",
+          backgroundColor: COLORS.darkRed,
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
-        <Typography sx={{ fontWeight: 900, color: COLORS.offBlack, mb: 1 }}>
-          Group name
-        </Typography>
-
-        <TextField
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. NYP Friends"
-          fullWidth
-          size="small"
+        {/* Sticky red header */}
+        <Box
           sx={{
-            "& .MuiOutlinedInput-root": {
-              borderRadius: 2,
-              backgroundColor: "white",
-            },
+            position: "sticky",
+            top: 0,
+            zIndex: 50,
+            backgroundColor: COLORS.darkRed,
+            textAlign: "center",
+            py: 3,
+            px: 2,
           }}
-        />
-
-        <Typography sx={{ fontWeight: 900, color: COLORS.offBlack, mt: 2, mb: 1 }}>
-          Timezone
-        </Typography>
-
-        <TextField
-          value={timezone}
-          onChange={(e) => setTimezone(e.target.value)}
-          placeholder="Asia/Singapore"
-          fullWidth
-          size="small"
-          sx={{
-            "& .MuiOutlinedInput-root": {
-              borderRadius: 2,
-              backgroundColor: "white",
-            },
-          }}
-        />
-
-        {errMsg && (
-          <Typography sx={{ mt: 1.5, fontSize: 12, color: "crimson", fontWeight: 800 }}>
-            {errMsg}
+        >
+          <Typography variant="h6" fontWeight={600} color={COLORS.offWhite}>
+            New Group
           </Typography>
-        )}
 
-        <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
-          <Button
-            variant="outlined"
-            onClick={() => nav(-1)}
-            disabled={loading}
+          <Typography sx={{ mt: 0.5, fontSize: 13, color: "rgba(255,255,255,0.75)" }}>
+            Create a group to plan hangouts (no chat).
+          </Typography>
+        </Box>
+
+        {/* Beige curved sheet */}
+        <Box
+          sx={{
+            backgroundColor: COLORS.offWhite,
+            borderTopLeftRadius: 40,
+            borderTopRightRadius: 40,
+            flexGrow: 1,
+            mt: "auto",
+            px: 2.25,
+            pt: 2.25,
+            pb: 10,
+            color: COLORS.offBlack,
+          }}
+        >
+          {/* Content card (keeps all your same fields + buttons) */}
+          <Paper
+            elevation={0}
             sx={{
-              borderRadius: 999,
-              textTransform: "none",
-              fontWeight: 900,
-              px: 2,
-              borderColor: "rgba(0,0,0,0.15)",
-              color: COLORS.offBlack,
+              mt: 0.5,
+              p: 2,
+              borderRadius: 4,
+              backgroundColor: "rgba(255,255,255,0.65)",
+              border: "1px solid rgba(0,0,0,0.06)",
             }}
           >
-            Cancel
-          </Button>
+            <Typography sx={{ fontWeight: 900, color: COLORS.offBlack, mb: 1 }}>
+              Group name
+            </Typography>
+            <Divider sx={{ mb: 1.5, opacity: 0.6 }} />
 
-          <Button
-            variant="contained"
-            disabled={!canSubmit}
-            onClick={onCreate}
-            sx={{
-              flex: 1,
-              borderRadius: 999,
-              textTransform: "none",
-              fontWeight: 900,
-              px: 2,
-              backgroundColor: COLORS.accentPink,
-              boxShadow: "none",
-              "&:hover": { backgroundColor: COLORS.accentPink, boxShadow: "none", opacity: 0.92 },
-            }}
-          >
-            {loading ? "Creating..." : "Create group"}
-          </Button>
+            <TextField
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. NYP Friends"
+              fullWidth
+              size="small"
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 2.5,
+                  backgroundColor: "white",
+                },
+              }}
+            />
+
+            <Typography sx={{ fontWeight: 900, color: COLORS.offBlack, mt: 2.25, mb: 1 }}>
+              Timezone
+            </Typography>
+            <Divider sx={{ mb: 1.5, opacity: 0.6 }} />
+
+            <TextField
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+              placeholder="Asia/Singapore"
+              fullWidth
+              size="small"
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 2.5,
+                  backgroundColor: "white",
+                },
+              }}
+            />
+
+            {errMsg && (
+              <Typography sx={{ mt: 1.5, fontSize: 12, color: "crimson", fontWeight: 800 }}>
+                {errMsg}
+              </Typography>
+            )}
+
+            <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
+              <Button
+                variant="outlined"
+                onClick={() => nav(-1)}
+                disabled={loading}
+                sx={{
+                  borderRadius: 999,
+                  textTransform: "none",
+                  fontWeight: 900,
+                  px: 2,
+                  borderColor: "rgba(0,0,0,0.15)",
+                  color: COLORS.offBlack,
+                  backgroundColor: "rgba(255,255,255,0.7)",
+                  "&:hover": { backgroundColor: "rgba(255,255,255,0.85)" },
+                }}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                variant="contained"
+                disabled={!canSubmit}
+                onClick={onCreate}
+                sx={{
+                  flex: 1,
+                  borderRadius: 999,
+                  textTransform: "none",
+                  fontWeight: 900,
+                  px: 2,
+                  backgroundColor: COLORS.accentPink,
+                  boxShadow: "none",
+                  "&:hover": {
+                    backgroundColor: COLORS.accentPink,
+                    boxShadow: "none",
+                    opacity: 0.92,
+                  },
+                }}
+              >
+                {loading ? "Creating..." : "Create group"}
+              </Button>
+            </Box>
+          </Paper>
         </Box>
       </Paper>
     </Box>

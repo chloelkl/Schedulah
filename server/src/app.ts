@@ -7,6 +7,8 @@ import groupsRoutes from "./routes/groups.js";
 import hangoutsRoutes from "./routes/hangouts.js";
 import invitesRoutes from "./routes/invites.js";
 
+import hangoutVotingRoutes from "./routes/hangoutVoting.js";
+
 export const app = express();
 
 // --- Middleware ---
@@ -25,6 +27,7 @@ app.use("/auth", authRoutes);
 app.use("/api/groups", groupsRoutes); // /api/groups/:groupId
 app.use("/api", hangoutsRoutes);      // /api/groups/:groupId/hangouts + /api/hangouts/:proposalId
 app.use("/api", invitesRoutes);
+app.use("/api", hangoutVotingRoutes);
 
 app.use("/api/events", eventsRoutes);
 
@@ -35,7 +38,14 @@ app.use((_req: Request, res: Response) => {
 });
 
 // --- Error handler (must be last) ---
-app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-  console.error(err);
-  res.status(500).json({ ok: false, error: "Internal server error" });
+app.use((err: any, _req: any, res: any, _next: any) => {
+  console.error("❌ SERVER ERROR:", err);
+  return res.status(500).json({
+    ok: false,
+    error: err?.message || "Internal server error",
+    details: err?.details || undefined,
+    hint: err?.hint || undefined,
+    code: err?.code || undefined,
+  });
 });
+
