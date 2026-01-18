@@ -13,6 +13,7 @@ import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import BlockRoundedIcon from "@mui/icons-material/BlockRounded";
 import { COLORS } from "../constants/colors";
 import { apiGet, apiPost } from "../utils/api";
+import { useToast } from "../contexts/ToastContext";
 
 /* =========================
    Types
@@ -53,12 +54,12 @@ type OverlayResponse = {
   };
 
   progress:
-    | {
-        total_active_members: number;
-        declined_members: number;
-        submitted_members: number;
-      }
-    | null;
+  | {
+    total_active_members: number;
+    declined_members: number;
+    submitted_members: number;
+  }
+  | null;
 
   can_vote: boolean;
   final: OverlayFinal | null;
@@ -96,7 +97,7 @@ export default function HangoutFinalOverlay({ open, proposalId, onClose }: Props
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string>("");
   const [overlay, setOverlay] = useState<OverlayResponse | null>(null);
-
+  const { showToast } = useToast();
   const title = overlay?.proposal?.title || "Hangout";
 
   useEffect(() => {
@@ -142,6 +143,7 @@ export default function HangoutFinalOverlay({ open, proposalId, onClose }: Props
       setErr("");
       await apiPost(`/api/hangouts/${proposalId}/respond`, { response });
       await refresh();
+      showToast("Event added!");
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Failed to respond";
       setErr(msg);
@@ -283,8 +285,8 @@ export default function HangoutFinalOverlay({ open, proposalId, onClose }: Props
               <InfoRow label="Time">
                 {final.chosen_slot
                   ? `${fmtDateTimeSG(final.chosen_slot.start_at)} → ${fmtDateTimeSG(
-                      final.chosen_slot.end_at
-                    )}`
+                    final.chosen_slot.end_at
+                  )}`
                   : "-"}
               </InfoRow>
 
@@ -324,8 +326,8 @@ export default function HangoutFinalOverlay({ open, proposalId, onClose }: Props
                     final.my_response === "accepted"
                       ? "rgba(236,157,175,0.35)"
                       : final.my_response === "declined"
-                      ? "rgba(0,0,0,0.06)"
-                      : "rgba(255,255,255,0.82)",
+                        ? "rgba(0,0,0,0.06)"
+                        : "rgba(255,255,255,0.82)",
                   color: COLORS.offBlack,
                   fontWeight: 950,
                   fontSize: 11,
@@ -334,8 +336,8 @@ export default function HangoutFinalOverlay({ open, proposalId, onClose }: Props
                 {final.my_response === "pending"
                   ? "Not responded yet"
                   : final.my_response === "accepted"
-                  ? "Accepted"
-                  : "Declined"}
+                    ? "Accepted"
+                    : "Declined"}
               </Box>
 
               <Typography sx={{ fontSize: 11, color: COLORS.grey, fontWeight: 800 }}>

@@ -10,6 +10,7 @@ import {
   submitProposal,
   finalizeAuto,
 } from "../services/hangoutVoting.service.js";
+import { supabaseAdmin } from "../supabase.js";
 
 /** =========================
  *  Types: Overlay Final + Response
@@ -49,12 +50,12 @@ export type OverlayResponse = {
   };
 
   progress:
-    | {
-        total_active_members: number;
-        declined_members: number;
-        submitted_members: number;
-      }
-    | null;
+  | {
+    total_active_members: number;
+    declined_members: number;
+    submitted_members: number;
+  }
+  | null;
 
   time_options: {
     slot_id: string;
@@ -90,6 +91,36 @@ export type OverlayResponse = {
   // ✅ finalized outcome (null if not finalized yet)
   final: OverlayFinal | null;
 };
+
+// temp date helper functions
+function parseUtcTs(ts: string) {
+  // "2026-01-19 04:00:00+00" -> "2026-01-19T04:00:00+00:00"
+  let isoish = ts.trim().replace(" ", "T");
+  isoish = isoish.replace(/([+-]\d{2})$/, "$1:00"); // +00 -> +00:00
+  const d = new Date(isoish);
+  if (Number.isNaN(d.getTime())) throw new Error(`Invalid timestamp: ${ts}`);
+  return d;
+}
+
+function toSgPartsFromUtcString(utcTs: string) {
+  const dUtc = parseUtcTs(utcTs);
+
+  // shift to Singapore (+08:00) for formatting parts
+  const dSg = new Date(dUtc.getTime() + 8 * 60 * 60 * 1000);
+
+  const yyyy = dSg.getUTCFullYear();
+  const mm = String(dSg.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(dSg.getUTCDate()).padStart(2, "0");
+
+  const HH = String(dSg.getUTCHours()).padStart(2, "0");
+  const MI = String(dSg.getUTCMinutes()).padStart(2, "0");
+
+  return {
+    date: `${yyyy}-${mm}-${dd}`,   // YYYY-MM-DD in SG
+    timeHM: `${HH}:${MI}`,         // HH:mm in SG
+  };
+}
+
 
 /** =========================
  *  Auth (MVP)
@@ -230,13 +261,13 @@ export async function getHangoutOverlayController(req: Request, res: Response) {
 
   // 1) Get base overlay data (voting info)
   const out = await getOverlay(proposalId, userId);
-if ("error" in out) return res.status(out.status).json({ error: out.error });
+  if ("error" in out) return res.status(out.status).json({ error: out.error });
 
-const base = out.data as any;
+  const base = out.data as any;
 
-console.log("overlay activities:", base?.activities?.length, base?.activities?.[0]);
-console.log("overlay experiences:", base?.experiences?.length, base?.experiences?.[0]);
-console.log("overlay mode:", base?.mode);
+  console.log("overlay activities:", base?.activities?.length, base?.activities?.[0]);
+  console.log("overlay experiences:", base?.experiences?.length, base?.experiences?.[0]);
+  console.log("overlay mode:", base?.mode);
 
   // 2) Attach final result if it exists
   let final: OverlayFinal | null = null;
@@ -356,7 +387,7 @@ export async function respondFinalController(req: Request, res: Response) {
   // find final_event_id
   const { data: finalRow, error: fErr } = await supabase
     .from("final_events")
-    .select("final_event_id")
+    .select("final_event_id,chosen_slot_id")
     .eq("proposal_id", proposalId)
     .maybeSingle();
 
@@ -374,5 +405,90 @@ export async function respondFinalController(req: Request, res: Response) {
   );
 
   if (upErr) return res.status(500).json({ error: upErr.message });
+
+  const { data: proposalRow, error: pErr } = await supabase
+    .from("hangout_proposals")
+    .select("title,location_hint")
+    .eq("proposal_id", proposalId)
+    .maybeSingle();
+
+  if (pErr) return res.status(500).json({ error: pErr.message });
+  if (!proposalRow) return res.status(404).json({ error: "not found" });
+
+  const { data: slotRow, error: sErr } = await supabase
+    .from("proposal_time_options")
+    .select("start_at,end_at")
+    .eq("slot_id", finalRow.chosen_slot_id)
+    .maybeSingle();
+
+  if (sErr) return res.status(500).json({ error: sErr.message });
+  if (!slotRow) return res.status(404).json({ error: "slot not found" });
+
+  const sgStart = toSgPartsFromUtcString(slotRow.start_at);
+  const sgEnd = toSgPartsFromUtcString(slotRow.end_at);
+
+  // If end spills into next day, you can either:
+  // - keep end_at as HH:mm (still fine), or
+  // - handle overnight events specially (optional)
+  const date = sgStart.date;
+  const start_at = sgStart.timeHM;
+  const end_at = sgEnd.timeHM;
+
+  const insertEventRow = {
+    user_id: userId,
+    title: proposalRow.title.trim(),
+    description: null,
+    location: proposalRow.location_hint ?? null,
+    date, // yyyy-mm-
+    start_at: start_at, // HH:mm 
+    end_at: end_at,     // HH:mm 
+    all_day: false,
+
+    visibility: "private",
+    busy_status: "busy",
+    source: "group_event",
+    final_event_id: finalRow.final_event_id,
+  };
+
+  const { data: eventRow, error: eventErr } = await supabaseAdmin
+    .from("event")
+    .insert(insertEventRow)
+    .select("event_id,*")
+    .single();
+
+  if (eventErr || !eventRow) {
+    return res.status(500).json({ error: eventErr?.message ?? "Failed to create event" });
+  }
+
+  const event_id = eventRow.event_id as string;
+
+
+
+  const { data: catRow, error: catErr } = await supabaseAdmin
+    .from("event_category")
+    .select("category_id")
+    .ilike("name", "event")
+    .maybeSingle();
+
+
+  if (catErr || !catRow?.category_id) {
+    // rollback event so you don't get orphan events
+    await supabaseAdmin.from("event").delete().eq("event_id", event_id);
+    return res.status(500).json({ error: "Category not found in eventcategory table" });
+  }
+
+  const category_id = catRow.category_id;
+
+  // 3) Insert mapping
+  const { error: mapErr } = await supabaseAdmin
+    .from("event_category_map")
+    .insert({ event_id, category_id });
+
+  if (mapErr) {
+    // rollback event
+    await supabaseAdmin.from("event").delete().eq("event_id", event_id);
+    return res.status(500).json({ error: mapErr.message });
+  }
+
   return res.status(200).json({ ok: true });
 }
