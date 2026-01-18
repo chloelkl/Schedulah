@@ -1,94 +1,103 @@
 import { useEffect, useMemo, useState } from "react";
-import { Calendar, Briefcase, Cake, Plus } from "lucide-react";
-import { Box, Paper, Typography, TextField, Stack, Divider } from "@mui/material";
+import { Box, Paper, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { COLORS } from "../constants/colors";
 import { supabase } from "../lib/supabaseClient";
 import { useToast } from "../contexts/ToastContext";
 import { useAddModeAction } from "../contexts/AddModeActionContext";
+import { useLocation as useRouterLocation } from "react-router-dom";
+
+import { AddEventTypePicker, type AddEventType } from "../components/events/AddEventTypePicker";
+import { OneOffEventForm } from "../components/events/OneOffEventForm";
+import {
+  RecurringEventForm
+} from "../components/events/RecurringEventForm";
+import { addWeeksOrMonths } from "../helpers/date-helpers";
+import type { OccurUnit, RepeatMode } from "../components/events/RepeatModal";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
+
+function isValidYmd(s: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(s);
+}
 
 export function AddEvent() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { registerSubmit, setIsSubmitting } = useAddModeAction();
 
-  const [type, setType] = useState<"event" | "recurring" | "birthday" | "custom">("event");
+  const routerLocation = useRouterLocation();
 
+  const [type, setType] = useState<AddEventType>("event");
+
+  // shared fields
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+
+  // optional location for event + recurring
   const [location, setLocation] = useState("");
+
+  // date/time (date = start date for recurring)
   const [date, setDate] = useState("");
   const [startAt, setStartAt] = useState("");
   const [endAt, setEndAt] = useState("");
 
-  const headerMap: Record<typeof type, string> = useMemo(() => ({
-    event: "Event",
-    recurring: "Recurring",
-    birthday: "Birthday",
-    custom: "Custom",
-  }), []);
+  // recurring-only
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>("weekly");
+  const [repeatDays, setRepeatDays] = useState<string[]>(["MO"]);
+  const [occurUnit, setOccurUnit] = useState<OccurUnit>("weeks");
+  const [occurCount, setOccurCount] = useState<number>(4);
 
-  const iconColor = (active: boolean) => (active ? COLORS.offWhite : COLORS.grey);
+  const headerMap: Record<AddEventType, string> = useMemo(
+    () => ({
+      event: "Event",
+      recurring: "Recurring",
+      birthday: "Birthday",
+      custom: "Custom",
+    }),
+    []
+  );
 
-  const submitEvent = async () => {
+  // Prefill date from query (?date=YYYY-MM-DD)
+  useEffect(() => {
+    const params = new URLSearchParams(routerLocation.search);
+    const prefill = params.get("date");
+    if (prefill && isValidYmd(prefill)) setDate(prefill);
+  }, [routerLocation.search]);
+
+  const submitOneOffEvent = async () => {
     console.log("POST ->", `${API_BASE}/api/events/add`);
-
     if (type !== "event") return;
 
     const trimmedTitle = title.trim();
-    if (!trimmedTitle) {
-      showToast("Title is required.", "error");
-      return;
-    }
-    if (!date) {
-      showToast("Date is required.", "error");
-      return;
-    }
+    if (!trimmedTitle) return showToast("Title is required.", "error");
+    if (!date) return showToast("Date is required.", "error");
 
-    // all_day = true only when BOTH empty
     const allDay = !startAt && !endAt;
-
-    // if only one time filled, allow it (you said optional)
-    // you can enforce rules later if you want.
 
     setIsSubmitting(true);
     try {
-      const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
-      if (sessionErr) throw sessionErr;
-
-      // TODO
-      // const accessToken = sessionData.session?.access_token;
-      // if (!accessToken) {
-      //   showToast("Please sign in again.", "error");
-      //   return;
-      // }
+      await supabase.auth.getSession();
 
       const payload = {
         title: trimmedTitle,
         description: description.trim() ? description.trim() : null,
         location: location.trim() ? location.trim() : null,
-        date, // yyyy-mm-dd
+        date,
         start_at: startAt ? startAt : null,
         end_at: endAt ? endAt : null,
         all_day: allDay,
+        category_name: type,
       };
 
       const res = await fetch(`${API_BASE}/api/events/add`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          // Authorization: `Bearer ${accessToken}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const msg = json?.error ?? "Failed to add event.";
-        throw new Error(msg);
-      }
+      if (!res.ok) throw new Error(json?.error ?? "Failed to add event.");
 
       showToast("Event added!");
       navigate("/");
@@ -99,12 +108,95 @@ export function AddEvent() {
     }
   };
 
-  // ✅ Register submit function so BottomAppBar pill can trigger it
+  const submitRecurringEvent = async () => {
+    console.log("POST ->", `${API_BASE}/api/events/add-recurring`);
+    if (type !== "recurring") return;
+
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) return showToast("Title is required.", "error");
+    if (!date) return showToast("Start date is required.", "error");
+
+    if (repeatMode === "weekly" && repeatDays.length === 0) {
+      return showToast("Pick at least 1 weekday.", "error");
+    }
+
+    if (!occurCount || occurCount <= 0) {
+      return showToast("Occur for must be at least 1.", "error");
+    }
+
+    const allDay = !startAt && !endAt;
+
+    if (repeatMode === "custom") {
+      return showToast("Custom dates is coming soon ✨", "info");
+    }
+
+    const rrule = `FREQ=WEEKLY;INTERVAL=1;BYDAY=${repeatDays.join(",")}`;
+    const until_at = addWeeksOrMonths(date, occurCount, occurUnit);
+
+    setIsSubmitting(true);
+    try {
+      // await supabase.auth.getSession();
+
+      const payload = {
+        // base event
+        title: trimmedTitle,
+        description: description.trim() ? description.trim() : null,
+
+        location: location.trim() ? location.trim() : null,
+
+        date,
+        start_at: startAt ? startAt : null,
+        end_at: endAt ? endAt : null,
+        all_day: allDay,
+        category_name: type,
+
+        // recurrence
+        recurrence: {
+          rrule,
+          until_at, // YYYY-MM-DD
+          count: null,
+        },
+      };
+
+      const res = await fetch(`${API_BASE}/api/events/add-recurring`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error ?? "Failed to add recurring event.");
+
+      showToast("Recurring event added!");
+      navigate("/");
+    } catch (e: any) {
+      showToast(e?.message ?? "Failed to add recurring event.", "error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Register submit for app bar
   useEffect(() => {
-    registerSubmit(type === "event" ? submitEvent : null);
+    if (type === "event") registerSubmit(submitOneOffEvent);
+    else if (type === "recurring") registerSubmit(submitRecurringEvent);
+    else registerSubmit(null);
+
     return () => registerSubmit(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, title, description, location, date, startAt, endAt]);
+  }, [
+    type,
+    title,
+    description,
+    location,
+    date,
+    startAt,
+    endAt,
+    repeatMode,
+    repeatDays,
+    occurUnit,
+    occurCount,
+  ]);
 
   return (
     <Box
@@ -135,20 +227,8 @@ export function AddEvent() {
           </Typography>
         </Box>
 
-        {/* Category Icons */}
-        <Box
-          display="flex"
-          justifyContent="space-around"
-          alignItems="center"
-          pb={4}
-          width={0.8}
-          margin={"auto"}
-        >
-          <Calendar size={30} color={iconColor(type === "event")} onClick={() => setType("event")} style={{ cursor: "pointer" }} />
-          <Briefcase size={30} color={iconColor(type === "recurring")} onClick={() => setType("recurring")} style={{ cursor: "pointer" }} />
-          <Cake size={30} color={iconColor(type === "birthday")} onClick={() => setType("birthday")} style={{ cursor: "pointer" }} />
-          <Plus size={30} color={iconColor(type === "custom")} onClick={() => setType("custom")} style={{ cursor: "pointer" }} />
-        </Box>
+        {/* Top icon selector */}
+        <AddEventTypePicker type={type} setType={setType} />
 
         {/* Body sheet */}
         <Box
@@ -164,72 +244,57 @@ export function AddEvent() {
             color: COLORS.offBlack,
           }}
         >
-          {type === "event" ? (
-            <>
-              <Typography fontWeight={800} sx={{ mb: 1 }}>
-                Details
+          {type === "event" && (
+            <OneOffEventForm
+              title={title}
+              setTitle={setTitle}
+              description={description}
+              setDescription={setDescription}
+              location={location}
+              setLocation={setLocation}
+              date={date}
+              setDate={setDate}
+              startAt={startAt}
+              setStartAt={setStartAt}
+              endAt={endAt}
+              setEndAt={setEndAt}
+            />
+          )}
+
+          {type === "recurring" && (
+            <RecurringEventForm
+              title={title}
+              setTitle={setTitle}
+              description={description}
+              setDescription={setDescription}
+              location={location}
+              setLocation={setLocation}
+              date={date}
+              setDate={setDate}
+              startAt={startAt}
+              setStartAt={setStartAt}
+              endAt={endAt}
+              setEndAt={setEndAt}
+              repeatMode={repeatMode}
+              setRepeatMode={setRepeatMode}
+              repeatDays={repeatDays}
+              setRepeatDays={setRepeatDays}
+              occurUnit={occurUnit}
+              setOccurUnit={setOccurUnit}
+              occurCount={occurCount}
+              setOccurCount={setOccurCount}
+            />
+          )}
+
+          {type === "birthday" && (
+            <Box sx={{ pt: 2 }}>
+              <Typography fontWeight={700} sx={{ color: COLORS.offBlack }}>
+                Coming soon ✨
               </Typography>
-              <Divider sx={{ mb: 2 }} />
+            </Box>
+          )}
 
-              <Stack spacing={2}>
-                <TextField
-                  label="Title *"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Study session"
-                  fullWidth
-                  required
-                />
-
-                <TextField
-                  label="Description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Optional notes"
-                  fullWidth
-                  multiline
-                  minRows={3}
-                />
-
-                <TextField
-                  label="Location"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="e.g. NYP Library"
-                  fullWidth
-                />
-
-                <TextField
-                  label="Date *"
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  fullWidth
-                  required
-                  InputLabelProps={{ shrink: true }}
-                />
-
-                <Box sx={{ display: "flex", gap: 2 }}>
-                  <TextField
-                    label="Start at"
-                    type="time"
-                    value={startAt}
-                    onChange={(e) => setStartAt(e.target.value)}
-                    fullWidth
-                    InputLabelProps={{ shrink: true }}
-                  />
-                  <TextField
-                    label="End at"
-                    type="time"
-                    value={endAt}
-                    onChange={(e) => setEndAt(e.target.value)}
-                    fullWidth
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Box>
-              </Stack>
-            </>
-          ) : (
+          {type === "custom" && (
             <Box sx={{ pt: 2 }}>
               <Typography fontWeight={700} sx={{ color: COLORS.offBlack }}>
                 Coming soon ✨
