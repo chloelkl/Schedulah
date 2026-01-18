@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import { Box, Typography, Paper, Divider } from "@mui/material";
 import { motion, AnimatePresence } from "framer-motion";
 import { COLORS } from "../constants/colors";
-import { startOfMonth, endOfMonth, isSameDay, prettyDate, prettyTimeRange } from "../helpers/date-helpers";
+import { startOfMonth, endOfMonth, isSameDay, prettyDate, prettyTimeRange, ymdFromLocalDate } from "../helpers/date-helpers";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Briefcase, Cake, Calendar } from "lucide-react";
 
@@ -22,6 +22,8 @@ export type DayEvent = {
   all_day: boolean;
   category?: { name: string; color: string | null } | null;
 };
+
+type MonthDots = Record<string, string[]>; // "YYYY-MM-DD" -> ["#hex", "#hex"]
 
 const GRID_ROWS = 6;      // your grid is always padded to full weeks
 const CELL = 36;
@@ -70,6 +72,8 @@ export default function Home() {
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(today));
   const [selectedDate, setSelectedDate] = useState<Date>(today);
   const [direction, setDirection] = useState(0);
+  const [monthDots, setMonthDots] = useState<MonthDots>({});
+
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -190,6 +194,33 @@ export default function Home() {
     return () => controller.abort();
   }, [selectedDate]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const run = async () => {
+      try {
+        const start = ymdFromLocalDate(startOfMonth(currentMonth));
+        const end = ymdFromLocalDate(endOfMonth(currentMonth));
+
+        const res = await fetch(
+          `${API_BASE}/api/events/retrieve-month-dots?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,
+          { signal: controller.signal }
+        );
+
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json?.error ?? "Failed to fetch month dots");
+
+        setMonthDots(json?.dots ?? {});
+      } catch (e: any) {
+        if (e?.name !== "AbortError") setMonthDots({});
+      }
+    };
+
+    run();
+    return () => controller.abort();
+  }, [currentMonth]);
+
+
   return (
     <Box
       sx={{
@@ -267,6 +298,7 @@ export default function Home() {
                       }
                     }}
                     sx={{
+                      position: "relative",
                       height: 36,
                       width: 36,
                       mx: "auto",
@@ -287,6 +319,39 @@ export default function Home() {
                     >
                       {date.getDate()}
                     </Typography>
+                    {/* ✅ month dots */}
+                    {(() => {
+                      const key = ymdFromLocalDate(date);
+                      const dots = monthDots[key] ?? [];
+                      if (!dots.length) return null;
+
+                      return (
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            bottom: 3,
+                            left: "50%",
+                            transform: "translateX(-50%)",
+                            display: "flex",
+                            gap: "3px",
+                            alignItems: "center",
+                            pointerEvents: "none",
+                          }}
+                        >
+                          {dots.slice(0, 3).map((c) => (
+                            <Box
+                              key={c}
+                              sx={{
+                                width: 5,
+                                height: 5,
+                                borderRadius: "50%",
+                                backgroundColor: c,
+                              }}
+                            />
+                          ))}
+                        </Box>
+                      );
+                    })()}
                   </Box>
                 );
               })}

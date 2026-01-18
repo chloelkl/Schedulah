@@ -282,6 +282,66 @@ router.get("/retrieve-by-date", async (req, res) => {
     return res.status(500).json({ error: e?.message ?? "Server error" });
   }
 });
+router.get("/retrieve-month-dots", async (req, res) => {
+  try {
+    const user_id = process.env.HOST_USER_ID as string;
+
+    const start = String(req.query.start ?? "").trim(); // YYYY-MM-DD
+    const end = String(req.query.end ?? "").trim();     // YYYY-MM-DD
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
+      return res.status(400).json({ error: "start/end must be YYYY-MM-DD" });
+    }
+
+    const { data: events, error: evErr } = await supabaseAdmin
+      .from("event")
+      .select("event_id,date")
+      .eq("user_id", user_id)
+      .gte("date", start)
+      .lte("date", end);
+
+    if (evErr) return res.status(500).json({ error: evErr.message });
+    const eventIds = (events ?? []).map((e) => e.event_id);
+    if (!eventIds.length) return res.status(200).json({ dots: {} });
+
+    const { data: maps, error: mapErr } = await supabaseAdmin
+      .from("event_category_map")
+      .select("event_id,category_id")
+      .in("event_id", eventIds);
+
+    if (mapErr) return res.status(500).json({ error: mapErr.message });
+
+    const catIds = Array.from(new Set((maps ?? []).map((m) => m.category_id)));
+    const { data: cats, error: catErr } = await supabaseAdmin
+      .from("event_category")
+      .select("category_id,color")
+      .in("category_id", catIds);
+
+    if (catErr) return res.status(500).json({ error: catErr.message });
+
+    const colorByCat = new Map((cats ?? []).map((c) => [c.category_id, c.color]));
+    const catByEvent = new Map((maps ?? []).map((m) => [m.event_id, m.category_id]));
+
+    const dots: Record<string, string[]> = {};
+
+    for (const ev of events ?? []) {
+      const catId = catByEvent.get(ev.event_id);
+      if (!catId) continue;
+
+      const color = colorByCat.get(catId) ?? null;
+      if (!color) continue;
+
+      const key = ev.date as string;
+
+      if (!dots[key]) dots[key] = [];
+      if (!dots[key].includes(color)) dots[key].push(color); // ✅ 1 per colour
+    }
+
+    return res.status(200).json({ dots });
+  } catch (e: any) {
+    return res.status(500).json({ error: e?.message ?? "Server error" });
+  }
+});
 
 
 export default router;
