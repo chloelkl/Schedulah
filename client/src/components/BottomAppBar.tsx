@@ -87,10 +87,12 @@ export function BottomAppBar() {
       const params = new URLSearchParams(location.search);
       const d = params.get("d");
       const date = d ?? ymdFromLocalDate(new Date());
-  
-    // ✅ default behavior (home -> add-event, else -> new group)
-    navigate(`/events/new?date=${encodeURIComponent(date)}`);
-    } 
+
+      // ✅ default behavior (home -> add-event, else -> new group)
+      navigate(`/events/new?date=${encodeURIComponent(date)}`);
+    } else {
+      navigate('/groups/new')
+    }
   };
 
   return (
